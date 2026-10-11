@@ -132,30 +132,10 @@ impl Config {
     /// target and a rename replaces it.
     pub fn save(&self, path: &Path) -> Result<(), ConfigError> {
         let text = toml::to_string_pretty(self).map_err(|source| ConfigError::Build { source })?;
-
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|source| ConfigError::Write {
-                path: parent.to_path_buf(),
-                source,
-            })?;
-        }
-
-        let mut temp = path.as_os_str().to_owned();
-        temp.push(".tmp");
-        let temp = PathBuf::from(temp);
-
-        if let Err(source) = fs::write(&temp, text) {
-            return Err(ConfigError::Write { path: temp, source });
-        }
-        if let Err(source) = fs::rename(&temp, path) {
-            let _ = fs::remove_file(&temp);
-            return Err(ConfigError::Write {
-                path: path.to_path_buf(),
-                source,
-            });
-        }
-
-        Ok(())
+        write_atomic(path, &text).map_err(|source| ConfigError::Write {
+            path: path.to_path_buf(),
+            source,
+        })
     }
 
     /// True when the name is protected by the user.
@@ -172,6 +152,26 @@ impl Config {
         let key = normalize(name);
         self.services.iter().find(|s| normalize(&s.name) == key)
     }
+}
+
+/// Write a file safely: the parent folder is created, the text goes to a temp
+/// file next to the target, and a rename replaces the target in one step.
+pub(crate) fn write_atomic(path: &Path, text: &str) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut temp = path.as_os_str().to_owned();
+    temp.push(".tmp");
+    let temp = PathBuf::from(temp);
+
+    fs::write(&temp, text)?;
+    if let Err(source) = fs::rename(&temp, path) {
+        let _ = fs::remove_file(&temp);
+        return Err(source);
+    }
+
+    Ok(())
 }
 
 /// `%APPDATA%\Leash\config.toml`. None when `APPDATA` is not set.
