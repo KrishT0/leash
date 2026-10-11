@@ -1,7 +1,8 @@
 // The warning dialog for a service that is critical. Section 8 asks the user to
 // confirm before Leash is allowed to stop one.
 
-import { PRIMARY, GHOST } from "../lib/ui";
+import { GHOST } from "../lib/ui";
+import { Cta } from "./Button";
 import { Dialog } from "./Dialog";
 
 interface WarnDialogProps {
@@ -23,9 +24,9 @@ export function WarnDialog({ open, detail, onCancel, onAccept }: WarnDialogProps
         <button type="button" onClick={onCancel} className={GHOST}>
           Cancel
         </button>
-        <button type="button" onClick={onAccept} className={PRIMARY}>
+        <Cta onClick={onAccept} glyph="→">
           I understand
-        </button>
+        </Cta>
       </div>
     </Dialog>
   );

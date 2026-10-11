@@ -1,6 +1,5 @@
-// The native dialog, as section 4 asks, with the small amount of wiring that
-// every dialog needs: open it, close it on Escape, and close it on a click on
-// the backdrop.
+// The native dialog, as section 4 asks. The same double-bezel as a card, with a
+// heavy frosted scrim behind it and the close wiring every dialog needs.
 
 import { useEffect, useRef, type ReactNode } from "react";
 
@@ -36,9 +35,9 @@ export function Dialog({ open, onClose, label, children }: DialogProps) {
       onClick={(event) => {
         if (event.target === ref.current) onClose();
       }}
-      className="w-[min(380px,calc(100vw-32px))] rounded-card border border-border bg-surface p-5 text-text backdrop:bg-black/60"
+      className="w-[min(540px,calc(100vw-32px))] rounded-bezel border border-border bg-shell p-[7px] text-text shadow-[0_50px_120px_-30px_rgba(0,0,0,0.7)] backdrop:bg-bg/75 backdrop:backdrop-blur-xl"
     >
-      {open ? children : null}
+      {open ? <div className="rounded-core bg-surface shadow-core">{children}</div> : null}
     </dialog>
   );
 }

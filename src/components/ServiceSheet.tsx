@@ -4,7 +4,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { addMonitor, getService, removeMonitor, setPolicy, startNow, stopNow } from "../lib/api";
 import type { Policy, ServiceView } from "../lib/types";
-import { GHOST, PRIMARY } from "../lib/ui";
+import { GHOST } from "../lib/ui";
+import { Cta } from "./Button";
 import { Dialog } from "./Dialog";
 import { Segmented } from "./Segmented";
 import { Switch } from "./Switch";
@@ -84,7 +85,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               <b>{service.display_name}</b>
               {blocked ? <Tag tone="error">blocked</Tag> : null}
               {critical ? <Tag tone="warn">critical</Tag> : null}
-              <Tag tone="neutral">{service.third_party ? "third party" : "Windows"}</Tag>
+              <Tag tone="dim">{service.third_party ? "third party" : "Windows"}</Tag>
             </div>
             <div className="font-mono text-xs text-muted">{service.name}</div>
 
@@ -157,9 +158,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
                 Close
               </button>
               {blocked ? null : (
-                <button
-                  type="button"
-                  className={PRIMARY}
+                <Cta
                   onClick={() =>
                     void act(() =>
                       service.status === "running" ? stopNow(service.name) : startNow(service.name),
@@ -167,7 +166,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
                   }
                 >
                   {service.status === "running" ? "Stop now" : "Start now"}
-                </button>
+                </Cta>
               )}
             </div>
           </div>

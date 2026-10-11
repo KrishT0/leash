@@ -3,7 +3,8 @@
 
 import { type ReactNode } from "react";
 import { DEFAULT_FILTERS, type Filters } from "../lib/services";
-import { GHOST, PRIMARY } from "../lib/ui";
+import { GHOST } from "../lib/ui";
+import { Cta } from "./Button";
 import { Dialog } from "./Dialog";
 import { Segmented } from "./Segmented";
 import { Switch } from "./Switch";
@@ -82,9 +83,9 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
         <button type="button" className={GHOST} onClick={() => onChange(DEFAULT_FILTERS)}>
           Reset
         </button>
-        <button type="button" className={PRIMARY} onClick={onClose}>
+        <Cta onClick={onClose} glyph="→">
           Show {count} services
-        </button>
+        </Cta>
       </div>
     </Dialog>
   );

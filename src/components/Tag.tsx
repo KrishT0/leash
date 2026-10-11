@@ -1,10 +1,10 @@
 // A status tag. Section 11: a soft tinted background, not an outline.
 
 import type { ReactNode } from "react";
-import { TAG, TAG_TONES } from "../lib/ui";
+import { TAG, TAG_TONES, type Tone } from "../lib/ui";
 
 interface TagProps {
-  tone: keyof typeof TAG_TONES;
+  tone: Tone;
   children: ReactNode;
 }
 

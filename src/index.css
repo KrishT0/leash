@@ -2,19 +2,29 @@
 @import "./fonts.css";
 
 /*
- * Section 11's tokens. Dark is the default.
+ * The tokens, in two moods.
  *
- * These are Tailwind theme values, so every one of them becomes a utility:
- * bg-bg, bg-surface, border-border, text-text, text-muted, text-ok,
- * text-warn, text-error, text-accent, font-display, font-mono, and the
- * corner radii.
+ * Dark is Ethereal Glass: a near-black substrate, layered light instead of
+ * lines, and one violet accent. Light is Soft Structuralism from the same
+ * design skill: white and silver, the same layering carried by soft diffuse
+ * shadows instead of glass. Both follow the system preference, as section 11
+ * asks.
+ *
+ * Every value below becomes a utility: bg-bg, bg-surface, bg-shell,
+ * border-border, text-text, text-muted, text-ok, text-warn, text-error,
+ * text-accent, font-display, font-mono, the radii, the spring curve, and the
+ * core shadow.
  */
 @theme {
-  --color-bg: #0a0b0f;
-  --color-surface: #13151b;
-  --color-border: #262a34;
-  --color-text: #eef0f4;
-  --color-muted: #7c8493;
+  --color-bg: #050505;
+  --color-surface: #0b0b0d;
+  /* The outer shell of a card, sitting under the surface plate. */
+  --color-shell: rgba(255, 255, 255, 0.035);
+  --color-border: rgba(255, 255, 255, 0.1);
+  /* The quieter hairline, for rules inside a plate. */
+  --color-hair: rgba(255, 255, 255, 0.06);
+  --color-text: #f4f5f7;
+  --color-muted: #8a8f9a;
   --color-ok: #4ade80;
   --color-warn: #fbbf24;
   --color-error: #f87171;
@@ -23,11 +33,21 @@
   --font-display: "Bricolage Grotesque", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 
-  /* Corners: cards and dialogs 12px, primary buttons 8px, nav items 10px. */
+  /* Corners. The bezel is the outer shell, the core sits inside it. */
+  --radius-bezel: 2rem;
+  --radius-core: 1.625rem;
+  --radius-rail: 1.25rem;
+  --radius-island: 9999px;
   --radius-card: 12px;
   --radius-button: 8px;
   --radius-nav: 10px;
   --radius-pill: 99px;
+
+  /* Motion. No linear, no ease-in-out, as the design skill asks. */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* The plate: an inner highlight in the dark, a soft shadow in the light. */
+  --shadow-core: inset 0 1px 1px rgba(255, 255, 255, 0.07);
 
   /*
    * The orbit's motion. Section 11 allows motion here and nowhere else, and
@@ -38,6 +58,8 @@
   --animate-ripple: ripple 0.9s ease-out;
   --animate-bump: bump 0.4s cubic-bezier(0.3, 1.7, 0.5, 1);
   --animate-dash: dashm 0.35s linear infinite;
+  /* One entrance, so a page never appears statically. */
+  --animate-rise: rise 0.9s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 
   @keyframes breathe {
     50% {
@@ -70,23 +92,39 @@
       stroke-dashoffset: -2.6;
     }
   }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
+      filter: blur(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: blur(0);
+    }
+  }
 }
 
 /*
- * The light palette follows the system, as section 11 asks. This sits outside
- * Tailwind's layers on purpose, so it wins over the theme values above.
+ * The light mood. This sits outside Tailwind's layers on purpose, so it wins
+ * over the theme values above.
  */
 @media (prefers-color-scheme: light) {
   :root {
-    --color-bg: #f5f6f9;
+    --color-bg: #f2f3f5;
     --color-surface: #ffffff;
-    --color-border: #dadde4;
+    --color-shell: rgba(0, 0, 0, 0.025);
+    --color-border: rgba(0, 0, 0, 0.09);
+    --color-hair: rgba(0, 0, 0, 0.055);
     --color-text: #14171b;
-    --color-muted: #5b626d;
+    --color-muted: #626873;
     --color-ok: #16a34a;
     --color-warn: #b45309;
     --color-error: #dc2626;
     --color-accent: #7c3aed;
+    --shadow-core: 0 28px 60px -32px rgba(20, 23, 27, 0.22);
   }
 }
 
@@ -101,7 +139,29 @@
     margin: 0;
     background: var(--color-bg);
     color: var(--color-text);
-    font: 15px/1.5 var(--font-display);
+    font: 16px/1.6 var(--font-display);
+  }
+
+  /*
+   * Film grain. A fixed layer over everything, never on a scrolling
+   * container, as the design skill's performance rules require.
+   */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: radial-gradient(#fff 0.5px, transparent 0.5px);
+    background-size: 3px 3px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    body::after {
+      opacity: 0.02;
+      background-image: radial-gradient(#000 0.5px, transparent 0.5px);
+    }
   }
 
   button {

@@ -27,11 +27,11 @@ export function Banner({ state, problem }: BannerProps) {
   }
 
   return (
-    <div className="mb-2 grid gap-2">
+    <div className="grid gap-2">
       {warnings.map((warning) => (
         <p
           key={warning}
-          className="m-0 rounded-card bg-warn/13 px-4 py-3 text-[13px] text-warn"
+          className="m-0 rounded-island border border-warn/25 bg-warn/10 px-4 py-3 text-[13px] text-warn backdrop-blur-xl"
         >
           {warning}
         </p>

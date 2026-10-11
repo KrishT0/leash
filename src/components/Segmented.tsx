@@ -1,5 +1,4 @@
-// The segmented control from the design reference: a pill of buttons with the
-// chosen one filled in.
+// The segmented control from the design language: a frosted track of pills.
 
 interface Option<T extends string> {
   value: T;
@@ -25,7 +24,7 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="my-2.5 flex rounded-pill border border-border bg-bg p-[3px]"
+      className="my-2.5 flex gap-1 rounded-island border border-hair bg-shell p-1"
     >
       {options.map((option) => (
         <button
@@ -34,8 +33,8 @@ export function Segmented<T extends string>({
           disabled={disabled}
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
-          className={`flex-1 rounded-pill p-[7px] text-[13px] font-medium disabled:cursor-default disabled:opacity-40 ${
-            option.value === value ? "bg-border text-text" : "text-muted"
+          className={`flex-1 rounded-island p-2.5 text-[13px] font-medium transition-[background,color] duration-700 ease-spring disabled:cursor-default disabled:opacity-40 ${
+            option.value === value ? "bg-border text-text" : "text-muted hover:text-text"
           }`}
         >
           {option.label}
