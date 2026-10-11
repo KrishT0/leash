@@ -210,7 +210,7 @@ fn parse_names(json: &str, list: &'static str) -> Result<HashSet<String>, Safety
 ///
 /// Windows 11 makes one copy of some services for each user. The suffix is a
 /// hex run after the last underscore. The length is not fixed.
-fn normalize(name: &str) -> String {
+pub(crate) fn normalize(name: &str) -> String {
     let lower = name.to_ascii_lowercase();
     match lower.rsplit_once('_') {
         Some((head, tail))
