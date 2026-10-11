@@ -194,8 +194,14 @@ var withSheet = wanted.indexOf("-sheet") > 0;
 var withDot = wanted.indexOf("-dot") > 0;
 var withTip = wanted.indexOf("-tip") > 0;
 var withScroll = wanted.indexOf("-scroll") > 0;
+var withAct = wanted.indexOf("-act") > 0;
 var label = names[
-  wanted.replace("-sheet", "").replace("-dot", "").replace("-tip", "").replace("-scroll", "")
+  wanted
+    .replace("-sheet", "")
+    .replace("-dot", "")
+    .replace("-tip", "")
+    .replace("-scroll", "")
+    .replace("-act", "")
 ];
 if (label) {
   var tries = 0;
@@ -238,6 +244,20 @@ if (label) {
           var main = document.querySelector("main");
           if (main) main.scrollTop = main.scrollHeight;
         }, 700);
+      }
+      if (withAct) {
+        // Press the action in the sheet, to see whether the sheet gets out of
+        // the way once the command comes back.
+        setTimeout(function () {
+          var wanted = ["Stop now", "Start now"];
+          var buttons = [].slice.call(document.querySelectorAll("button"));
+          var act = buttons.filter(function (button) {
+            return wanted.some(function (word) {
+              return button.textContent.trim() === word;
+            });
+          })[0];
+          if (act) act.click();
+        }, 1400);
       }
     }
     if (++tries > 40) clearInterval(timer);

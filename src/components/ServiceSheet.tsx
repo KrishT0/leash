@@ -50,13 +50,20 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
     void load(name);
   }, [name, load]);
 
-  /** Run a command, then bring the sheet and the list up to date. */
-  async function act(command: () => Promise<unknown>) {
+  /**
+   * Run a command, then bring the sheet and the list up to date.
+   *
+   * With `andClose`, a command that succeeds ends the visit, so the sheet gets
+   * out of the way. A command that fails keeps it open, because the reason is
+   * shown on it.
+   */
+  async function act(command: () => Promise<unknown>, andClose = false) {
     try {
       await command();
       setProblem(null);
-      if (name !== null) await load(name);
+      if (name !== null && !andClose) await load(name);
       onChanged();
+      if (andClose) onClose();
     } catch (error) {
       setProblem(String(error));
     }
@@ -166,8 +173,12 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               {blocked ? null : (
                 <Cta
                   onClick={() =>
-                    void act(() =>
-                      service.status === "running" ? stopNow(service.name) : startNow(service.name),
+                    void act(
+                      () =>
+                        service.status === "running"
+                          ? stopNow(service.name)
+                          : startNow(service.name),
+                      true,
                     )
                   }
                 >
