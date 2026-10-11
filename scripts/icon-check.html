@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Leash tray mark, at tray sizes</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #1c1c1c;
+        color: #ddd;
+        font: 12px/1.6 system-ui, sans-serif;
+        display: flex;
+        gap: 40px;
+        align-items: flex-end;
+      }
+      figure {
+        margin: 0;
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+      }
+      canvas {
+        /* Rasterised at the real size, then magnified, so what is on screen is
+           the pixels the tray would actually paint. */
+        width: calc(var(--size) * 8);
+        height: calc(var(--size) * 8);
+        image-rendering: pixelated;
+      }
+      figcaption {
+        font-family: monospace;
+        color: #999;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const SIZES = [8, 16, 20, 24, 32];
+
+      const source = new Image();
+      source.src = "icon-tray.svg";
+      source.onload = () => {
+        for (const size of SIZES) {
+          const figure = document.createElement("figure");
+          figure.style.setProperty("--size", size + "px");
+
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          // White stands in for the colour the tray paints at run time.
+          const context = canvas.getContext("2d");
+          context.drawImage(source, 0, 0, size, size);
+
+          const caption = document.createElement("figcaption");
+          caption.textContent = size + " px";
+
+          figure.append(canvas, caption);
+          document.body.append(figure);
+        }
+      };
+      source.onerror = () => {
+        document.body.textContent = "the mark did not load";
+      };
+    </script>
+  </body>
+</html>

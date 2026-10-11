@@ -1,0 +1,23 @@
+<!--
+  The source for the app tile icon. Regenerate it by rendering this file in
+  Chrome, headless, on a transparent background in a 1024 by 1024 window, and
+  write the result to src-tauri/icons/icon.png. The Tauri icon command then
+  derives every other size from that one file, plus the Windows ico and the
+  macOS icns.
+
+  The tile is the mark from Home: an orbit with one dot resting on it, and a
+  brighter trail behind the dot. The tile background is part of the shape, so
+  the window, the taskbar and the installer all show the same square.
+
+  This comment holds no double dash, because an XML comment may not contain one,
+  and a double dash here would stop the file loading as an image.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="#0B0B0D" />
+
+  <!-- The orbit. -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#7C5CFF" stroke-width="30" />
+
+  <!-- The service it holds back, resting on the orbit. -->
+  <circle cx="406" cy="256" r="52" fill="#FFFFFF" />
+</svg>

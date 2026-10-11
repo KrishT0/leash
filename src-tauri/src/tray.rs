@@ -54,9 +54,7 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let flags = app.state::<AppState>().tray_flags();
     let (colour, tooltip) = status(flags);
 
-    if let Some(image) = icon(app, colour) {
-        let _ = tray.set_icon(Some(image));
-    }
+    let _ = tray.set_icon(Some(icon(colour)));
 
     if let Ok(menu) = menu(app, flags.paused) {
         let _ = tray.set_menu(Some(menu));
@@ -105,11 +103,11 @@ fn toggle_pause<R: Runtime>(app: &AppHandle<R>) {
 
 /// The tray icon in one colour.
 ///
-/// The app icon is the placeholder until the branding work lands, so the shape
-/// stays and the colour carries the meaning. The alpha channel keeps the shape,
-/// and every visible pixel takes the colour.
-fn icon<R: Runtime>(app: &AppHandle<R>, colour: (u8, u8, u8)) -> Option<Image<'static>> {
-    let base = app.default_window_icon()?;
+/// The mark is drawn on transparency, with no tile of its own, because every
+/// visible pixel takes the colour of the state. Its shapes are heavier than the
+/// app icon's, because the tray draws it at 16 pixels across.
+fn icon(colour: (u8, u8, u8)) -> Image<'static> {
+    let base = tauri::include_image!("icons/tray.png");
 
     let mut rgba = base.rgba().to_vec();
     for pixel in rgba.chunks_exact_mut(4) {
@@ -120,7 +118,7 @@ fn icon<R: Runtime>(app: &AppHandle<R>, colour: (u8, u8, u8)) -> Option<Image<'s
         }
     }
 
-    Some(Image::new_owned(rgba, base.width(), base.height()))
+    Image::new_owned(rgba, base.width(), base.height())
 }
 
 /// The colour and the tooltip for a set of flags.
