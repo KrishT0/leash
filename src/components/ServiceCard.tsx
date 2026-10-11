@@ -33,15 +33,19 @@ export function ServiceCard({ service, lastCatch, justCaught, now, onOpen }: Ser
     <button
       type="button"
       onClick={onOpen}
-      className={`flex flex-col gap-1 rounded-item border p-3 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-control active:scale-[0.97] ${
+      className={`flex h-full flex-col gap-1 rounded-item border p-3 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-control active:scale-[0.97] ${
         justCaught
           ? "border-warn/40 bg-warn/8"
           : "border-hair bg-control"
       }`}
     >
-      <b className="text-[14px] leading-snug font-medium">{service.display_name}</b>
+      {/* Two lines are reserved, so the state tag on every card sits at the
+          same height however long the name is. */}
+      <b className="line-clamp-2 min-h-[2.75em] text-[14px] leading-snug font-medium">
+        {service.display_name}
+      </b>
       <span className="font-mono text-[11px] text-muted">{service.name}</span>
-      <div className="pt-3">
+      <div className="mt-auto pt-3">
         <span className={`${TAG} ${TAG_TONES[tone]}`}>
           {state} · {policyText(service)}
         </span>

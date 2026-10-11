@@ -5,7 +5,7 @@
 // while a spring moves and nothing else. Section 11: only the orb animates all
 // the time, and the frame loop runs only while a dot is moving.
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { CAUGHT_RADIUS, dotRadius, dots, point, spring } from "../lib/orbit";
 import type { ServiceView } from "../lib/types";
 
@@ -35,6 +35,11 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
   const dotRefs = useRef<(SVGGElement | null)[]>([]);
   const lineRefs = useRef<(SVGLineElement | null)[]>([]);
   const labelRef = useRef<SVGTextElement | null>(null);
+  const tipRef = useRef<HTMLDivElement | null>(null);
+  /** The name under the pointer, or null. The frame loop reads this. */
+  const hoverRef = useRef<string | null>(null);
+  /** The frame loop's paint, so a hover can place the tooltip at once. */
+  const paintRef = useRef<(() => void) | null>(null);
   const frame = useRef(0);
 
   useEffect(() => {
@@ -69,6 +74,31 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
         lineRefs.current[index]?.setAttribute("y2", String(y));
       });
 
+      // The tooltip follows the pointer, over the dot it belongs to. It comes
+      // before the caught label, because that label returns early.
+      const tip = tipRef.current;
+      const hovered = hoverRef.current;
+      const hoverIndex = hovered
+        ? services.findIndex((service) => service.name === hovered)
+        : -1;
+      if (tip) {
+        // The caught service already carries its name, so its tooltip stays out
+        // of the way.
+        if (hoverIndex < 0 || hovered === caught?.name) {
+          tip.style.display = "none";
+        } else {
+          const where = state.get(services[hoverIndex].name);
+          const { x, y } = point(
+            layout[hoverIndex],
+            where?.radius ?? layout[hoverIndex].home,
+          );
+          tip.style.display = "";
+          tip.textContent = services[hoverIndex].display_name;
+          tip.style.left = `${x}%`;
+          tip.style.top = `${y}%`;
+        }
+      }
+
       // Only the service that was just caught gets a name, as section 11 asks.
       const label = labelRef.current;
       const index = services.findIndex((service) => service.name === caught?.name);
@@ -86,6 +116,8 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
       label.setAttribute("y", String(y + 1));
       label.setAttribute("text-anchor", right ? "end" : "start");
     };
+
+    paintRef.current = paint;
 
     if (reduced) {
       // No spring, no ripple, no breath.
@@ -120,12 +152,25 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
     }
 
     return () => {
+      paintRef.current = null;
       if (frame.current) {
         window.cancelAnimationFrame(frame.current);
         frame.current = 0;
       }
     };
   }, [services, caught]);
+
+  /** Show the name of the service under the pointer. */
+  const enter = useCallback((name: string) => {
+    hoverRef.current = name;
+    paintRef.current?.();
+  }, []);
+
+  /** Hide the name when the pointer leaves. */
+  const leave = useCallback(() => {
+    hoverRef.current = null;
+    paintRef.current?.();
+  }, []);
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[360px]">
@@ -190,6 +235,9 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
                 dotRefs.current[index] = element;
               }}
               onClick={() => onPick?.(service.name)}
+              onMouseEnter={() => enter(service.name)}
+              onMouseLeave={leave}
+              className="cursor-pointer"
               style={{
                 transition: "fill 0.3s",
                 filter:
@@ -198,17 +246,17 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
                     : "drop-shadow(0 0 1.2px var(--color-accent))",
               }}
             >
-              {/* The name the browser shows on hover. */}
-              <title>{service.display_name}</title>
               {/*
-               * A dot is only a few pixels wide, so an unseen larger circle
-               * takes the pointer. A transparent fill still receives events;
-               * no fill does not.
+               * A dot is only a few pixels wide, so a slightly larger circle
+               * takes the pointer. It stays close to the dot, or the hand would
+               * appear over empty space. A transparent fill still receives
+               * events; no fill does not.
                */}
-              <circle r={Math.max(radius * 3, 3.2)} fill="transparent" className="cursor-pointer" />
+              <circle r={radius + 1.6} fill="transparent" />
               <circle
                 r={radius}
                 fill={service.name === caught?.name ? "var(--color-warn)" : "var(--color-accent)"}
+                className="pointer-events-none"
               />
             </g>
           ))}
@@ -224,6 +272,16 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
           className="pointer-events-none font-display"
         />
       </svg>
+
+      {/*
+       * Starts hidden through an inline style, not a class: the frame loop
+       * shows it again by clearing the style, which a class would override.
+       */}
+      <div
+        ref={tipRef}
+        style={{ display: "none" }}
+        className="pointer-events-none absolute -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-island border border-border bg-panel px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-text shadow-[0_12px_34px_-14px_rgba(0,0,0,0.8)]"
+      />
 
       <div className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2">
         {caught ? (

@@ -192,7 +192,8 @@ var wanted = location.hash.slice(1) || "home";
 var names = { home: "Home", services: "Services", activity: "Activity", settings: "Settings" };
 var withSheet = wanted.indexOf("-sheet") > 0;
 var withDot = wanted.indexOf("-dot") > 0;
-var label = names[wanted.replace("-sheet", "").replace("-dot", "")];
+var withTip = wanted.indexOf("-tip") > 0;
+var label = names[wanted.replace("-sheet", "").replace("-dot", "").replace("-tip", "")];
 if (label) {
   var tries = 0;
   var timer = setInterval(function () {
@@ -209,13 +210,23 @@ if (label) {
           if (row) row.click();
         }, 400);
       }
-      if (withDot) {
+      if (withDot || withTip) {
         // A dot is an SVG group, so it needs a real mouse event rather than
         // Element.click(), which SVG elements do not have.
         setTimeout(function () {
-          var dot = document.querySelector("svg g > title") &&
-            document.querySelector("svg g > title").parentNode;
-          if (dot) dot.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          var hit = document.querySelector("svg g > circle[fill='transparent']");
+          var dot = hit && hit.parentNode;
+          if (!dot) return;
+          if (withTip) {
+            // What a real pointer sends when it arrives over an element.
+            ["pointerover", "mouseover"].forEach(function (kind) {
+              dot.dispatchEvent(
+                new MouseEvent(kind, { bubbles: true, relatedTarget: document.body }),
+              );
+            });
+          } else {
+            dot.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          }
         }, 600);
       }
     }
