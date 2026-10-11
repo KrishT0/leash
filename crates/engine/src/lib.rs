@@ -4,6 +4,7 @@
 //! the Windows API.
 
 pub mod config;
+pub mod elevation;
 pub mod log;
 pub mod safety;
 pub mod scm;
