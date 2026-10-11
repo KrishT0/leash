@@ -103,6 +103,7 @@ try {
     $results = @()
     foreach ($filter in @(
         'should_stop_the_test_service',
+        'should_start_the_test_service',
         'should_give_up_after_the_cap_on_a_service_that_keeps_coming_back'
     )) {
         Write-Host "`n--- $filter ---" -ForegroundColor Cyan

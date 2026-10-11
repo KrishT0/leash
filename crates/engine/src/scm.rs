@@ -11,8 +11,8 @@ use std::mem::size_of;
 use std::time::{Duration, Instant};
 use windows::Win32::Foundation::{
     CloseHandle, ERROR_ACCESS_DENIED, ERROR_DEPENDENT_SERVICES_RUNNING, ERROR_INSUFFICIENT_BUFFER,
-    ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST, HANDLE, WAIT_EVENT, WAIT_IO_COMPLETION,
-    WAIT_OBJECT_0, WIN32_ERROR,
+    ERROR_MORE_DATA, ERROR_SERVICE_DISABLED, ERROR_SERVICE_DOES_NOT_EXIST, HANDLE, WAIT_EVENT,
+    WAIT_IO_COMPLETION, WAIT_OBJECT_0, WIN32_ERROR,
 };
 use windows::Win32::System::Services::{
     CloseServiceHandle, ControlService, ENUM_SERVICE_STATUS_PROCESSW, ENUM_SERVICE_STATUSW,
@@ -23,9 +23,10 @@ use windows::Win32::System::Services::{
     SERVICE_BOOT_START, SERVICE_CONTINUE_PENDING, SERVICE_CONTROL_STOP, SERVICE_DEMAND_START,
     SERVICE_DISABLED, SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_NOTIFY_2W,
     SERVICE_NOTIFY_RUNNING, SERVICE_PAUSE_PENDING, SERVICE_PAUSED, SERVICE_QUERY_CONFIG,
-    SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START_PENDING, SERVICE_START_TYPE,
-    SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE, SERVICE_STATUS_PROCESS,
-    SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED, SERVICE_SYSTEM_START, SERVICE_WIN32,
+    SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START, SERVICE_START_PENDING,
+    SERVICE_START_TYPE, SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE,
+    SERVICE_STATUS_PROCESS, SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED,
+    SERVICE_SYSTEM_START, SERVICE_WIN32, StartServiceW,
 };
 use windows::Win32::System::Threading::{
     CreateEventW, INFINITE, SetEvent, WaitForMultipleObjectsEx,
@@ -274,8 +275,8 @@ pub fn dependents(name: &str) -> Result<Vec<String>, ScmError> {
     Ok(names)
 }
 
-/// How long a stop may take before Leash gives up waiting.
-pub const DEFAULT_STOP_WAIT: Duration = Duration::from_secs(30);
+/// How long a start or a stop may take before Leash gives up waiting.
+pub const DEFAULT_WAIT: Duration = Duration::from_secs(30);
 
 /// The `dwVersion` field of `SERVICE_NOTIFY_2W`. The Windows SDK defines
 /// `SERVICE_NOTIFY_STATUS_CHANGE` as this value, and the crate does not export
@@ -554,24 +555,94 @@ pub fn stop(name: &str, wait: Duration) -> Result<StopOutcome, ScmError> {
         Err(source) => return Err(classify(source, name)),
     }
 
-    wait_for_stop(&handle, name, wait)
+    let stopped = wait_for_state(&handle, name, wait, Status::StopPending, Status::Stopped)?;
+
+    Ok(if stopped {
+        StopOutcome::Stopped
+    } else {
+        StopOutcome::NotStopped
+    })
 }
 
-/// Wait while the service is stopping. The wait hint sets the pace, the
-/// checkpoint shows progress, and the deadline ends it.
-fn wait_for_stop(handle: &Handle, name: &str, wait: Duration) -> Result<StopOutcome, ScmError> {
-    let start = Instant::now();
-    let hard_deadline = start + wait.saturating_mul(3);
-    let mut deadline = start + wait;
+/// What happened when Leash asked a service to start.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StartOutcome {
+    /// The service is running, either because it just started or because it
+    /// already was.
+    Started,
+    /// The service is disabled, so Windows refused. Leash never changes a
+    /// service setting.
+    Disabled,
+    /// The wait ended and the service is still not running.
+    NotStarted,
+}
+
+/// Ask a service to start. This is the undo of a stop.
+///
+/// The caller runs the safety check first, exactly as for a stop. This function
+/// changes no service setting, so a disabled service stays disabled and the
+/// answer is [`StartOutcome::Disabled`].
+///
+/// The wait can stretch to three times `wait` while the service keeps reporting
+/// progress through its checkpoint. After that Leash stops waiting.
+pub fn start(name: &str, wait: Duration) -> Result<StartOutcome, ScmError> {
+    let manager = open_manager()?;
+    // The start procedure needs these two rights and no more.
+    let handle = open_service(&manager, name, SERVICE_START | SERVICE_QUERY_STATUS)?;
+
+    if status_from(status_of(&handle, name)?.dwCurrentState) == Status::Running {
+        return Ok(StartOutcome::Started);
+    }
+
+    // SAFETY: the handle carries SERVICE_START, and no arguments go to the
+    // service here.
+    let answer = unsafe { StartServiceW(handle.0, None) };
+    match answer {
+        Ok(()) => {}
+        Err(error) if is_win32(&error, ERROR_SERVICE_DISABLED) => {
+            return Ok(StartOutcome::Disabled);
+        }
+        Err(source) => return Err(classify(source, name)),
+    }
+
+    let started = wait_for_state(&handle, name, wait, Status::StartPending, Status::Running)?;
+
+    Ok(if started {
+        StartOutcome::Started
+    } else {
+        StartOutcome::NotStarted
+    })
+}
+
+/// Wait while the service sits in `pending`, until it reaches `wanted`. True when
+/// it got there, and false when it settled somewhere else or the wait ran out.
+///
+/// The wait hint sets the pace, the checkpoint shows progress, and the deadline
+/// ends it. The wait can stretch to three times `wait` while progress continues.
+fn wait_for_state(
+    handle: &Handle,
+    name: &str,
+    wait: Duration,
+    pending: Status,
+    wanted: Status,
+) -> Result<bool, ScmError> {
+    let opened = Instant::now();
+    let hard_deadline = opened + wait.saturating_mul(3);
+    let mut deadline = opened + wait;
     let mut last_checkpoint = 0u32;
 
     loop {
         let status = status_of(handle, name)?;
-        match status_from(status.dwCurrentState) {
-            Status::Stopped => return Ok(StopOutcome::Stopped),
-            Status::StopPending => {}
-            // The service is running again, or it never left.
-            _ => return Ok(StopOutcome::NotStopped),
+        let state = status_from(status.dwCurrentState);
+
+        if state == wanted {
+            return Ok(true);
+        }
+        // It settled somewhere else, or it never left. Waiting on does not
+        // help either way.
+        if state != pending {
+            return Ok(false);
         }
 
         if status.dwCheckPoint != last_checkpoint {
@@ -583,10 +654,10 @@ fn wait_for_stop(handle: &Handle, name: &str, wait: Duration) -> Result<StopOutc
 
         let now = Instant::now();
         if now >= deadline {
-            return Ok(StopOutcome::NotStopped);
+            return Ok(false);
         }
 
-        // Ask faster than the hint the service gave, so a stop that finishes
+        // Ask faster than the hint the service gave, so a change that finishes
         // early is noticed at once.
         let hint = u64::from(status.dwWaitHint.max(100));
         let step = Duration::from_millis(hint / 4)
@@ -1064,6 +1135,67 @@ mod tests {
 
     #[test]
     #[ignore = "calls the real service manager"]
+    fn should_report_a_missing_service_on_a_start() {
+        let error = start("LeashNoSuchService1234", Duration::from_secs(1)).unwrap_err();
+        assert!(matches!(error, ScmError::NotFound { .. }), "{error:?}");
+    }
+
+    #[test]
+    #[ignore = "needs an elevated shell and LeashTestSvc"]
+    fn should_start_the_test_service() {
+        // Only the dummy service that the test script creates may be started
+        // from a test. Never a real service.
+        match query("LeashTestSvc") {
+            Err(ScmError::NotFound { .. }) => {
+                println!("LeashTestSvc is not installed. Run the elevated test script.");
+                return;
+            }
+            Err(error) => panic!("LeashTestSvc: {error:?}"),
+            Ok(_) => {}
+        }
+
+        // Stop it first, so the start has real work to do.
+        assert_eq!(
+            stop("LeashTestSvc", DEFAULT_WAIT).expect("stop"),
+            StopOutcome::Stopped
+        );
+
+        assert_eq!(
+            start("LeashTestSvc", DEFAULT_WAIT).expect("start"),
+            StartOutcome::Started
+        );
+
+        // It is running now, so a second start is a no-op and must say Started.
+        assert_eq!(
+            start("LeashTestSvc", DEFAULT_WAIT).expect("start again"),
+            StartOutcome::Started
+        );
+
+        // A disabled service cannot start, and Leash never changes a setting, so
+        // Windows has to refuse the start.
+        set_test_service_start_type("disabled");
+        assert_eq!(
+            stop("LeashTestSvc", DEFAULT_WAIT).expect("stop"),
+            StopOutcome::Stopped
+        );
+        assert_eq!(
+            start("LeashTestSvc", DEFAULT_WAIT).expect("start while disabled"),
+            StartOutcome::Disabled
+        );
+        // Put it back, so the tests that run after this one can start it.
+        set_test_service_start_type("demand");
+    }
+
+    fn set_test_service_start_type(kind: &str) {
+        let changed = std::process::Command::new("sc.exe")
+            .args(["config", "LeashTestSvc", "start=", kind])
+            .status()
+            .expect("sc config");
+        assert!(changed.success(), "sc config start= {kind} failed");
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
     fn should_not_call_a_stopped_service_blocked() {
         let services = list_services().expect("list");
         let stopped = services
@@ -1111,12 +1243,12 @@ mod tests {
             }
         }
 
-        let outcome = stop("LeashTestSvc", DEFAULT_STOP_WAIT).expect("stop");
+        let outcome = stop("LeashTestSvc", DEFAULT_WAIT).expect("stop");
         assert_eq!(outcome, StopOutcome::Stopped);
 
         // The service is down now, so a second stop is a no-op and must not
         // report that the service refuses a stop command.
-        let again = stop("LeashTestSvc", DEFAULT_STOP_WAIT).expect("stop again");
+        let again = stop("LeashTestSvc", DEFAULT_WAIT).expect("stop again");
         assert_eq!(again, StopOutcome::Stopped);
     }
 
