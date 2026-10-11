@@ -299,6 +299,22 @@ fn parse_date(text: &str) -> Option<i64> {
     Some(days_from_civil(year, month, day))
 }
 
+/// The time of the newest catch, which is the newest entry whose action was a
+/// stop and whose result was a success. Only the newest [`CATCH_SCAN_LIMIT`]
+/// entries are looked at, so the call stays cheap on a long log.
+pub fn read_latest_catch(dir: &Path) -> Result<Option<String>, LogError> {
+    for entry in read_entries(dir, CATCH_SCAN_LIMIT)? {
+        if entry.action.as_deref() == Some("stop") && entry.result.as_deref() == Some("success") {
+            return Ok(Some(entry.ts));
+        }
+    }
+
+    Ok(None)
+}
+
+/// How far back the newest catch is looked for.
+const CATCH_SCAN_LIMIT: usize = 200;
+
 /// The newest entries, newest first, up to `limit`.
 pub fn read_entries(dir: &Path, limit: usize) -> Result<Vec<Entry>, LogError> {
     let listing = match fs::read_dir(dir) {
@@ -675,6 +691,33 @@ mod tests {
         let entries = read_entries(&dir, 10).expect("read");
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].service, "Good");
+    }
+
+    #[test]
+    fn should_find_the_newest_catch() {
+        let dir = temp_dir("latest-catch");
+        let mut log = ActivityLog::new(dir.clone());
+
+        // Nothing happened yet.
+        assert_eq!(read_latest_catch(&dir).expect("read"), None);
+
+        // A blocked service is not a catch.
+        let mut blocked = Entry::new("One", "started");
+        blocked.result = Some("blocked".to_string());
+        log.append(&blocked).expect("append");
+        assert_eq!(read_latest_catch(&dir).expect("read"), None);
+
+        let mut caught = Entry::new("Two", "started");
+        caught.action = Some("stop".to_string());
+        caught.result = Some("success".to_string());
+        log.append(&caught).expect("append");
+
+        let stamp = caught.ts.clone();
+        assert_eq!(read_latest_catch(&dir).expect("read"), Some(stamp.clone()));
+
+        // A later notice does not move the newest catch.
+        log.append(&Entry::new("Three", "started")).expect("append");
+        assert_eq!(read_latest_catch(&dir).expect("read"), Some(stamp));
     }
 
     #[test]

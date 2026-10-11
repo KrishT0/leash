@@ -80,6 +80,23 @@ pub struct ServiceInfo {
     pub pid: Option<u32>,
 }
 
+impl ServiceInfo {
+    /// The facts the safety check needs that come from the service itself. The
+    /// dependent count needs its own call, so it is left at zero here. The list
+    /// view uses this, which is why listing services costs no extra calls.
+    pub fn facts(&self) -> ServiceFacts {
+        ServiceFacts {
+            name: self.name.clone(),
+            // Windows reports no accepted controls while a service is stopped.
+            // Stopping it again is a no-op, so it does not count as blocked.
+            accepts_stop: self.accepts_stop || self.status == Status::Stopped,
+            is_driver: self.is_driver,
+            is_win32: self.is_win32,
+            running_dependents: 0,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ScmError {
     #[error("the service {name} does not exist")]
@@ -673,17 +690,10 @@ fn wait_for_state(
 /// services, such as `RpcSs`, when the process is not elevated.
 pub fn facts(name: &str) -> Result<ServiceFacts, ScmError> {
     let info = query(name)?;
-    let running_dependents = dependents(name)?.len();
+    let mut facts = info.facts();
+    facts.running_dependents = dependents(name)?.len();
 
-    Ok(ServiceFacts {
-        name: info.name,
-        // Windows reports no accepted controls while a service is stopped.
-        // Stopping it again is a no-op, so it does not count as blocked.
-        accepts_stop: info.accepts_stop || info.status == Status::Stopped,
-        is_driver: info.is_driver,
-        is_win32: info.is_win32,
-        running_dependents,
-    })
+    Ok(facts)
 }
 
 /// A manager handle that closes itself.

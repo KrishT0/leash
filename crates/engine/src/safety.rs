@@ -55,6 +55,23 @@ pub enum Reason {
     None,
 }
 
+impl Reason {
+    /// A short sentence for the UI. The UI never writes this text itself, so
+    /// one place owns the wording.
+    pub fn text(&self) -> &'static str {
+        match self {
+            Self::DenyList => "it is on the list of services Leash never stops",
+            Self::NeverTouch => "you asked Leash to leave it alone",
+            Self::StopNotAccepted => "it does not accept a stop command",
+            Self::Driver => "it is a driver, not a service",
+            Self::NotWin32Service => "it is not a Windows service",
+            Self::SensitiveList => "it is a critical service, so Leash warns first",
+            Self::RunningDependents => "other running services depend on it",
+            Self::None => "",
+        }
+    }
+}
+
 /// The verdict for one service.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Verdict {

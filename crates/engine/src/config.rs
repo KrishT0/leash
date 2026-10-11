@@ -181,7 +181,7 @@ pub fn config_path() -> Option<PathBuf> {
 }
 
 /// Check every entry. Names are trimmed in place.
-fn validate(mut config: Config) -> Result<Config, ConfigError> {
+pub fn validate(mut config: Config) -> Result<Config, ConfigError> {
     let mut seen = HashSet::new();
     let mut services = Vec::with_capacity(config.services.len());
     for mut service in config.services.drain(..) {

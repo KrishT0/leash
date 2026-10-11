@@ -310,6 +310,19 @@ impl Watchdog {
             retry.rearm();
         }
     }
+
+    /// The services that used up their stops inside the window and are waiting
+    /// for the user to try again. The UI shows a badge for these.
+    pub fn gave_up(&self) -> Vec<String> {
+        let retries = lock(&self.shared.retries);
+        let now = Instant::now();
+
+        retries
+            .iter()
+            .filter(|(_, retry)| retry.has_given_up(now))
+            .map(|(name, _)| name.clone())
+            .collect()
+    }
 }
 
 impl Drop for Watchdog {
@@ -960,6 +973,21 @@ mod tests {
                 .count();
         }
         count
+    }
+
+    #[test]
+    #[ignore = "creates a real event object"]
+    fn should_report_no_service_as_given_up_before_anything_happens() {
+        // An empty watch list starts no threads, so this is cheap. Windows is
+        // still called for the event that tells the threads to stop.
+        let (sink, _events) = std::sync::mpsc::channel();
+        let mut watchdog = Watchdog::start(settings("no-give-up"), &[], sink).expect("start empty");
+
+        assert!(!watchdog.is_paused());
+        assert!(watchdog.gave_up().is_empty());
+
+        watchdog.rearm("Nothing");
+        watchdog.stop();
     }
 
     #[test]
