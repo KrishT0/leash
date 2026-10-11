@@ -252,6 +252,12 @@ impl AppState {
         })
     }
 
+    /// True when the user wants notices. Section 9 gates them with a setting,
+    /// and the log records every event whether they are on or not.
+    pub fn notifications_on(&self) -> bool {
+        lock(&self.inner).config.general.notifications
+    }
+
     /// The three facts the tray colour needs. This reads nothing from Windows
     /// and no files, so the tray can ask for it whenever it likes.
     pub fn tray_flags(&self) -> TrayFlags {
