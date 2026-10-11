@@ -1,0 +1,20 @@
+# The hook that runs before a commit.
+#
+# Biome checks the staged frontend files only, so a commit stays quick. It is the
+# same check as `pnpm lint`, narrowed to the files this commit touches.
+#
+# Warnings are failures here on purpose. Biome reports a warning for things like
+# an unused variable, and it leaves the exit code at zero for those, so without
+# the flag a finding could ride into a commit unnoticed. That is not a theory:
+# the first version of this hook let one through.
+#
+# Nothing here builds, formats or runs tests. TypeScript runs as part of
+# `pnpm build`, and the tests are a separate command, so a commit is never held
+# up by work that does not belong in it.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: lint
+      glob: "src/**/*.{ts,tsx,css}"
+      run: pnpm exec biome check --error-on-warnings {staged_files}

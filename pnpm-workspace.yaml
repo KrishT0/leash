@@ -1,0 +1,7 @@
+# pnpm reads its settings here, not from package.json.
+#
+# lefthook fetches its own binary while installing, so its build has to be
+# allowed. Without this line pnpm skips the build, and every `pnpm exec` then
+# fails, because the dependency check runs an install that exits non-zero.
+allowBuilds:
+  lefthook: true
