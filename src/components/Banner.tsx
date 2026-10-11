@@ -31,7 +31,7 @@ export function Banner({ state, problem }: BannerProps) {
       {warnings.map((warning) => (
         <p
           key={warning}
-          className="m-0 rounded-island border border-warn/25 bg-warn/10 px-4 py-3 text-[13px] text-warn"
+          className="m-0 rounded-island border border-warn/25 bg-warn/10 px-3.5 py-2.5 text-[12.5px] text-warn"
         >
           {warning}
         </p>

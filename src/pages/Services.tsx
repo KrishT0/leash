@@ -83,7 +83,7 @@ export function Services({ onChanged }: ServicesProps) {
         onChange={(event) => setQuery(event.currentTarget.value)}
         placeholder="Search by name"
         aria-label="Search services"
-        className="w-full rounded-island border border-hair bg-bg px-4 py-3 text-sm text-text placeholder:text-muted"
+        className="w-full rounded-island border border-hair bg-bg px-3.5 py-2.5 text-[13px] text-text placeholder:text-muted"
       />
 
       {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}

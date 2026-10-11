@@ -73,7 +73,7 @@ export default function App() {
   }
 
   return (
-    <div className="grid min-h-full grid-cols-[236px_minmax(0,1fr)] max-[719px]:grid-cols-1">
+    <div className="grid min-h-full grid-cols-[216px_minmax(0,1fr)] max-[719px]:grid-cols-1">
       <Rail
         page={page}
         onPick={setPage}
@@ -81,7 +81,7 @@ export default function App() {
         paused={state?.paused ?? null}
       />
 
-      <main className="grid content-start gap-6 py-4 pr-8 pl-8 max-[719px]:gap-4 max-[719px]:pr-3.5 max-[719px]:pl-3.5">
+      <main className="grid content-start gap-5 py-3.5 pr-6 pl-6 max-[719px]:gap-4 max-[719px]:px-3">
         <TopBar
           page={page}
           paused={state ? state.paused : null}

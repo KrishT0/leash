@@ -37,9 +37,9 @@ export function Dialog({ open, onClose, label, children }: DialogProps) {
       }}
       // Tailwind's reset drops the margin that centres a dialog, so it is set
       // again here. The height cap keeps a long sheet inside the window.
-      className="m-auto max-h-[calc(100vh-2rem)] w-[min(540px,calc(100vw-32px))] overflow-y-auto rounded-panel border border-border bg-panel text-text shadow-[0_50px_120px_-30px_rgba(0,0,0,0.72)] backdrop:bg-bg/75 backdrop:backdrop-blur-xl"
+      className="m-auto max-h-[calc(100vh-2rem)] w-[min(540px,calc(100vw-32px))] overflow-x-hidden overflow-y-auto rounded-panel border border-border bg-panel text-text shadow-[0_50px_120px_-30px_rgba(0,0,0,0.72)] backdrop:bg-bg/75 backdrop:backdrop-blur-xl"
     >
-      {open ? <div className="p-7">{children}</div> : null}
+      {open ? <div className="p-6">{children}</div> : null}
     </dialog>
   );
 }

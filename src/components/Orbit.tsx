@@ -239,11 +239,11 @@ export function Orbit({ services, caught, paused, today }: OrbitProps) {
           <div>
             <div
               key={today}
-              className="animate-bump text-[min(11vw,45px)] leading-none font-bold tracking-[-0.05em]"
+              className="animate-bump text-[min(10vw,42px)] leading-none font-bold tracking-[-0.05em]"
             >
               {today}
             </div>
-            <div className="mt-1 text-[11px] text-muted">caught today</div>
+            <div className="mt-1 text-[10.5px] text-muted">caught today</div>
           </div>
         </div>
       </div>

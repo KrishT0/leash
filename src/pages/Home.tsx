@@ -1,9 +1,9 @@
-// Home, as the design reference composes it: two columns. On the left the day
-// counter, the quiet line and the seven day bars, then the held back cards.
-// On the right the orbit, then the last four lines of the log.
+// Home, as the design reference composes it: one column. The orbit with the
+// counter inside it, the quiet line under it, then the services held back, the
+// latest catches, and the seven day bars. No cards here, so the orbit keeps the
+// whole width above the lists.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Card } from "../components/Card";
 import { Orbit, type Caught } from "../components/Orbit";
 import { ServiceCard } from "../components/ServiceCard";
 import { Tag } from "../components/Tag";
@@ -118,123 +118,102 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
   const busiest = Math.max(...days.map((day) => day.count), 1);
 
   return (
-    <div className="grid items-start gap-4 min-[1150px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-      <Card className="min-[1150px]:col-start-1">
-          <p className={`m-0 ${EYEBROW}`}>Caught today</p>
-
-          <div className="-mt-2">
-            <div className="text-[76px] leading-[0.9] font-semibold tracking-[-0.05em]">
-              {state.caught_today}
-            </div>
-            <div className="mt-3 text-[15px] text-muted">
-              {onLeash.length === 1
-                ? "1 service on a leash"
-                : `${onLeash.length} services on a leash`}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 border-t border-hair pt-5">
-            <span className="font-mono text-[13px] text-muted">{quiet}</span>
-            <Tag tone={state.paused ? "warn" : "ok"}>
-              {state.paused ? "Watchdog paused" : "Watchdog active"}
-            </Tag>
-          </div>
-
-          <div>
-            <div className="flex h-16 items-end gap-2">
-              {days.map((day, index) => (
-                <i
-                  key={day.date}
-                  className={`block w-full rounded-t-[10px] rounded-b-[3px] transition-[height] duration-700 ease-spring ${
-                    index === 6
-                      ? "bg-accent shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]"
-                      : "bg-border"
-                  }`}
-                  style={{ height: `${Math.max(6, (day.count / busiest) * 100)}%` }}
-                  title={`${day.count} caught`}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex gap-2 font-mono text-[11px] text-muted">
-              {days.map((day) => (
-                <span key={day.date} className="flex-1 text-center">
-                  {weekdayLetter(day.date)}
-                </span>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-      <Card className="min-[1150px]:col-start-2 min-[1150px]:row-start-1">
+    <div className="grid content-start">
+      <div className="pt-5 pb-2 text-center">
         <Orbit
           services={state.monitored}
           caught={caught}
           paused={state.paused}
           today={state.caught_today}
         />
-        <p className="m-0 text-center font-mono text-[11px] leading-relaxed text-muted">
-          The dot at the rim is the service Leash just caught.
+        <p className="mt-4 font-mono text-[12.5px] text-muted">{quiet}</p>
+      </div>
+
+      <Section title="Held back">
+        {onLeash.length > 0 ? <Tag tone="dim">{onLeash.length} on a leash</Tag> : null}
+      </Section>
+
+      {onLeash.length === 0 ? (
+        <p className="m-0 text-[13px] text-muted">
+          Nothing on a leash yet. Pick a service in Services.
         </p>
-      </Card>
+      ) : (
+        <div
+          ref={cards}
+          className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5"
+        >
+          {onLeash.slice(0, fit).map(({ service, lastCatch }) => (
+            <ServiceCard
+              key={service.name}
+              service={service}
+              lastCatch={lastCatch}
+              now={now}
+              justCaught={caught?.name === service.name}
+              onOpen={onViewAll}
+            />
+          ))}
+        </div>
+      )}
 
-      <Card className="min-[1150px]:col-start-1">
-        <div className="flex items-center justify-between gap-3">
-            <p className={`m-0 ${EYEBROW}`}>Held back</p>
-            {onLeash.length > 0 ? (
-              <Tag tone="dim">{onLeash.length} on a leash</Tag>
-            ) : null}
-          </div>
+      {onLeash.length > fit ? (
+        <button type="button" onClick={onViewAll} className={`${GHOST} mt-3 justify-self-start`}>
+          View all {onLeash.length}
+        </button>
+      ) : null}
 
-          {onLeash.length === 0 ? (
-            <p className="m-0 text-[13px] text-muted">
-              Nothing on a leash yet. Pick a service in Services.
-            </p>
-          ) : (
-            <div
-              ref={cards}
-              className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5"
-            >
-              {onLeash.slice(0, fit).map(({ service, lastCatch }) => (
-                <ServiceCard
-                  key={service.name}
-                  service={service}
-                  lastCatch={lastCatch}
-                  now={now}
-                  justCaught={caught?.name === service.name}
-                  onOpen={onViewAll}
-                />
-              ))}
-            </div>
-          )}
+      <Section title="Caught" />
 
-          {onLeash.length > fit ? (
-            <button type="button" onClick={onViewAll} className={`${GHOST} self-start`}>
-              View all {onLeash.length}
-            </button>
-          ) : null}
-        </Card>
+      <ul className="m-0 list-none p-0">
+        {feed.map((entry, index) => (
+          <li
+            key={`${entry.ts}-${entry.service}-${index}`}
+            className="flex items-center gap-3 border-t border-hair py-3 first:border-t-0 first:pt-0"
+          >
+            <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
+            <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
+              {entryText(entry)}
+            </span>
+            <Tag tone={entryTone(entry)}>{entryResult(entry)}</Tag>
+          </li>
+        ))}
+        {feed.length === 0 ? (
+          <li className="text-[13px] text-muted">Nothing has happened yet.</li>
+        ) : null}
+      </ul>
 
-      <Card className="min-[1150px]:col-start-2">
-        <p className={`m-0 ${EYEBROW}`}>Caught, last four</p>
+      <Section title="Last 7 days" />
 
-          <ul className="m-0 list-none p-0">
-            {feed.map((entry, index) => (
-              <li
-                key={`${entry.ts}-${entry.service}-${index}`}
-                className="flex items-center gap-3 border-t border-hair py-3 first:border-t-0 first:pt-0"
-              >
-                <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
-                <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
-                  {entryText(entry)}
-                </span>
-                <Tag tone={entryTone(entry)}>{entryResult(entry)}</Tag>
-              </li>
-            ))}
-            {feed.length === 0 ? (
-              <li className="text-[13px] text-muted">Nothing has happened yet.</li>
-            ) : null}
-          </ul>
-        </Card>
+      <div className="flex h-16 gap-2">
+        {days.map((day, index) => (
+          <i
+            key={day.date}
+            className={`block w-full self-end rounded-t-[10px] rounded-b-[3px] transition-[height] duration-700 ease-spring ${
+              index === 6
+                ? "bg-accent shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]"
+                : "bg-border"
+            }`}
+            style={{ height: `${Math.max(6, (day.count / busiest) * 100)}%` }}
+            title={`${day.count} caught`}
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2 font-mono text-[11px] text-muted">
+        {days.map((day) => (
+          <span key={day.date} className="flex-1 text-center">
+            {weekdayLetter(day.date)}
+          </span>
+        ))}
+      </div>
     </div>
+  );
+}
+
+/** A section heading, with anything that belongs on the same line. */
+function Section({ title, children }: { title: string; children?: React.ReactNode }) {
+  return (
+    <h2 className={`mt-7 mb-2.5 flex items-center justify-between gap-3 ${EYEBROW}`}>
+      <span>{title}</span>
+      {children}
+    </h2>
   );
 }

@@ -33,13 +33,13 @@ export function ServiceCard({ service, lastCatch, justCaught, now, onOpen }: Ser
     <button
       type="button"
       onClick={onOpen}
-      className={`flex flex-col gap-1 rounded-item border p-3.5 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-control active:scale-[0.97] ${
+      className={`flex flex-col gap-1 rounded-item border p-3 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-control active:scale-[0.97] ${
         justCaught
           ? "border-warn/40 bg-warn/8"
           : "border-hair bg-control"
       }`}
     >
-      <b className="text-[15px] leading-snug font-medium">{service.display_name}</b>
+      <b className="text-[14px] leading-snug font-medium">{service.display_name}</b>
       <span className="font-mono text-[11px] text-muted">{service.name}</span>
       <div className="pt-3">
         <span className={`${TAG} ${TAG_TONES[tone]}`}>

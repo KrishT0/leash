@@ -83,7 +83,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
           <div>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="m-0 text-[28px] leading-tight font-semibold tracking-[-0.03em]">
+                <h2 className="m-0 text-[22px] leading-tight font-semibold tracking-[-0.03em]">
                   {service.display_name}
                 </h2>
                 <div className="mt-1 font-mono text-xs text-muted">{service.name}</div>
@@ -95,7 +95,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               </div>
             </div>
 
-            <dl className="my-4 grid grid-cols-[86px_1fr] gap-x-3 gap-y-2 border-t border-hair pt-5">
+            <dl className="my-3.5 grid grid-cols-[82px_1fr] gap-x-3 gap-y-1.5 border-t border-hair pt-4">
               <dt className="text-muted">Status</dt>
               <dd className="m-0 font-mono text-[13px]">{statusWord(service)}</dd>
               <dt className="text-muted">Startup</dt>
@@ -134,7 +134,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               </p>
             ) : (
               <>
-                <label className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-4">
+                <label className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-3.5">
                   <span>Monitor this service</span>
                   <Switch
                     checked={monitored}
@@ -159,7 +159,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
 
             {problem ? <p className="my-2 text-[13px] text-error">{problem}</p> : null}
 
-            <div className="mt-4 flex justify-end gap-2 border-t border-hair pt-5">
+            <div className="mt-3.5 flex justify-end gap-2 border-t border-hair pt-4">
               <button type="button" onClick={onClose} className={GHOST}>
                 Close
               </button>
