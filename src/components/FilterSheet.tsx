@@ -3,7 +3,7 @@
 
 import { type ReactNode } from "react";
 import { DEFAULT_FILTERS, type Filters } from "../lib/services";
-import { GHOST } from "../lib/ui";
+import { EYEBROW, GHOST } from "../lib/ui";
 import { Cta } from "./Button";
 import { Dialog } from "./Dialog";
 import { Segmented } from "./Segmented";
@@ -41,7 +41,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
 
   return (
     <Dialog open={open} onClose={onClose} label="Filter services">
-      <b>Filter services</b>
+      <h2 className="m-0 text-[19px] font-semibold tracking-[-0.02em]">Filter services</h2>
 
       <Group label="Status">
         <Segmented
@@ -70,7 +70,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
         />
       </Group>
 
-      <label className="flex items-center justify-between gap-3 border-t border-border py-2.5">
+      <label className="mt-1 flex items-center justify-between gap-3 border-t border-hair py-4">
         <span>Show blocked services</span>
         <Switch
           checked={filters.blocked}
@@ -79,7 +79,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
         />
       </label>
 
-      <div className="mt-3.5 flex justify-end gap-2">
+      <div className="mt-4 flex justify-end gap-2 border-t border-hair pt-5">
         <button type="button" className={GHOST} onClick={() => onChange(DEFAULT_FILTERS)}>
           Reset
         </button>
@@ -95,7 +95,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mt-3 mb-0 text-[13px] text-muted">{label}</p>
+      <p className={`mt-0 mb-0 ${EYEBROW}`}>{label}</p>
       {children}
     </div>
   );

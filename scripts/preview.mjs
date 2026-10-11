@@ -60,7 +60,20 @@ const services = [
     status: "running",
     pid: 4212,
   }),
-  service({ name: "SysMain", display_name: "SysMain", status: "running", pid: 1180, policy: null }),
+  service({
+    name: "SysMain",
+    display_name: "SysMain",
+    status: "running",
+    pid: 1180,
+    policy: null,
+    suggested: {
+      name: "SysMain",
+      display: "SysMain",
+      reason: "Not needed on a solid state drive",
+      effect: "Apps may open a little slower",
+      risk: "low",
+    },
+  }),
   service({
     name: "wuauserv",
     display_name: "Windows Update",
@@ -86,6 +99,13 @@ const services = [
     status: "running",
     pid: 2684,
     policy: "notify",
+    suggested: {
+      name: "DiagTrack",
+      display: "Connected User Experiences and Telemetry",
+      reason: "Sends usage data to Microsoft",
+      effect: "Diagnostic data stops being sent",
+      risk: "medium",
+    },
   }),
   service({
     name: "bthserv",
@@ -181,9 +201,12 @@ if (label) {
       clearInterval(timer);
       if (withSheet) {
         setTimeout(function () {
-          var row = document.querySelector("section button");
+          var wantedName = "${services[0].display_name}";
+          var row = [].slice.call(document.querySelectorAll("button")).filter(function (button) {
+            return button.textContent.indexOf(wantedName) >= 0;
+          })[0];
           if (row) row.click();
-        }, 300);
+        }, 400);
       }
     }
     if (++tries > 40) clearInterval(timer);

@@ -16,11 +16,11 @@ interface WarnDialogProps {
 export function WarnDialog({ open, detail, onCancel, onAccept }: WarnDialogProps) {
   return (
     <Dialog open={open} onClose={onCancel} label="Potentially critical service">
-      <b>Potentially critical service</b>
-      <p className="my-2 text-[13px] text-muted">
+      <h2 className="m-0 text-[19px] font-semibold tracking-[-0.02em]">Potentially critical service</h2>
+      <p className="mt-2 mb-0 text-[13px] text-muted">
         Stopping this service may affect Windows functionality.{detail ? ` ${detail}` : ""}
       </p>
-      <div className="mt-3.5 flex justify-end gap-2">
+      <div className="mt-4 flex justify-end gap-2 border-t border-hair pt-5">
         <button type="button" onClick={onCancel} className={GHOST}>
           Cancel
         </button>

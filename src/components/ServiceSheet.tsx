@@ -81,15 +81,21 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
       <Dialog open={name !== null} onClose={onClose} label="Service">
         {service ? (
           <div>
-            <div className="flex items-baseline gap-1.5">
-              <b>{service.display_name}</b>
-              {blocked ? <Tag tone="error">blocked</Tag> : null}
-              {critical ? <Tag tone="warn">critical</Tag> : null}
-              <Tag tone="dim">{service.third_party ? "third party" : "Windows"}</Tag>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="m-0 text-[28px] leading-tight font-semibold tracking-[-0.03em]">
+                  {service.display_name}
+                </h2>
+                <div className="mt-1 font-mono text-xs text-muted">{service.name}</div>
+              </div>
+              <div className="flex flex-none items-center gap-1.5 pt-1.5">
+                {blocked ? <Tag tone="error">Blocked</Tag> : null}
+                {critical ? <Tag tone="warn">Critical</Tag> : null}
+                <Tag tone="dim">{service.third_party ? "Third party" : "Windows"}</Tag>
+              </div>
             </div>
-            <div className="font-mono text-xs text-muted">{service.name}</div>
 
-            <dl className="my-3 grid grid-cols-[72px_1fr] gap-x-2 gap-y-1">
+            <dl className="my-4 grid grid-cols-[86px_1fr] gap-x-3 gap-y-2 border-t border-hair pt-5">
               <dt className="text-muted">Status</dt>
               <dd className="m-0 font-mono text-[13px]">{statusWord(service)}</dd>
               <dt className="text-muted">Startup</dt>
@@ -128,7 +134,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               </p>
             ) : (
               <>
-                <label className="flex items-center justify-between gap-3 border-t border-border py-2.5">
+                <label className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-4">
                   <span>Monitor this service</span>
                   <Switch
                     checked={monitored}
@@ -153,7 +159,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
 
             {problem ? <p className="my-2 text-[13px] text-error">{problem}</p> : null}
 
-            <div className="mt-3.5 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2 border-t border-hair pt-5">
               <button type="button" onClick={onClose} className={GHOST}>
                 Close
               </button>

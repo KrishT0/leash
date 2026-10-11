@@ -57,8 +57,8 @@ export function AddSheet({ open, services, onClose, onAdded }: AddSheetProps) {
   return (
     <>
       <Dialog open={open} onClose={onClose} label="Add a service to stop">
-        <b>Add a service to stop</b>
-        <p className="my-2 text-[13px] text-muted">
+        <h2 className="m-0 text-[19px] font-semibold tracking-[-0.02em]">Add a service to stop</h2>
+        <p className="mt-2 mb-0 text-[13px] text-muted">
           Type a display name or an internal name. Leash checks it with Windows first.
         </p>
 
@@ -69,13 +69,13 @@ export function AddSheet({ open, services, onClose, onAdded }: AddSheetProps) {
           placeholder="For example: Spooler"
           aria-label="Service name"
           autoComplete="off"
-          className="my-1.5 w-full rounded-pill border border-border bg-surface px-4 py-2.5 text-text"
+          className="w-full rounded-island border border-hair bg-bg px-4 py-3 text-sm text-text placeholder:text-muted"
         />
 
-        {problem ? <p className="my-2 text-[13px] text-error">{problem}</p> : null}
+        {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}
 
         {wanted && matches.length === 0 ? (
-          <p className="my-2 text-[13px] text-muted">
+          <p className="m-0 text-[13px] text-muted">
             Not found. Check the internal name in services.msc.
           </p>
         ) : null}
@@ -88,7 +88,7 @@ export function AddSheet({ open, services, onClose, onAdded }: AddSheetProps) {
           />
         ))}
 
-        <div className="mt-3.5 flex justify-end gap-2">
+        <div className="mt-4 flex justify-end gap-2 border-t border-hair pt-5">
           <button type="button" className={GHOST} onClick={onClose}>
             Close
           </button>
@@ -123,11 +123,11 @@ function MatchRow({ service, onAdd }: { service: ServiceView; onAdd: () => void 
       type="button"
       disabled={blocked || monitored}
       onClick={onAdd}
-      className="flex w-full cursor-pointer items-center justify-between gap-2.5 border-t border-border px-0.5 py-3 text-left disabled:cursor-default disabled:opacity-50"
+      className="flex w-full cursor-pointer items-center justify-between gap-3 border-t border-hair px-0.5 py-3.5 text-left transition-colors duration-700 ease-spring hover:bg-shell disabled:cursor-default disabled:opacity-50"
     >
-      <span>
-        {service.display_name}
-        <small className="block font-mono text-xs text-muted">{service.name}</small>
+      <span className="min-w-0">
+        <span className="block truncate text-[15px] font-medium">{service.display_name}</span>
+        <span className="block truncate font-mono text-xs text-muted">{service.name}</span>
       </span>
       <span className="flex items-center font-mono text-xs text-muted">
         {blocked ? <Tag tone="error">Blocked</Tag> : monitored ? <Tag tone="ok">On a leash</Tag> : <Found />}
