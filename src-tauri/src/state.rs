@@ -63,6 +63,14 @@ pub struct Snapshot {
     pub config_error: Option<String>,
 }
 
+/// The three facts the tray colour needs, read without touching the machine.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct TrayFlags {
+    pub elevated: bool,
+    pub paused: bool,
+    pub watching: bool,
+}
+
 /// The payload of `service_caught`.
 #[derive(Debug, Clone, Serialize)]
 pub struct CaughtEvent {
@@ -242,6 +250,18 @@ impl AppState {
             general: inner.config.general.clone(),
             config_error: inner.config_error.clone(),
         })
+    }
+
+    /// The three facts the tray colour needs. This reads nothing from Windows
+    /// and no files, so the tray can ask for it whenever it likes.
+    pub fn tray_flags(&self) -> TrayFlags {
+        let inner = lock(&self.inner);
+
+        TrayFlags {
+            elevated: inner.elevated,
+            paused: inner.config.general.paused,
+            watching: inner.watchdog.is_some(),
+        }
     }
 
     /// Every service on the machine, with the safety check and the policy for

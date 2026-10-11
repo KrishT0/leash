@@ -7,12 +7,16 @@
 //! Commands that read the machine or wait on it are marked `async`, which runs
 //! them off the main thread. A stop can wait for a service for up to a minute,
 //! and that must not freeze the window.
+//!
+//! A command that changes whether Leash is watching, paused, or allowed to stop
+//! a service refreshes the tray colour at the end.
 
 use crate::state::{AppState, ServiceView, Snapshot};
+use crate::tray;
 use leash_engine::config::{General, Policy};
 use leash_engine::log::Entry;
 use leash_engine::scm::{StartOutcome, StopOutcome};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 /// The whole state the UI shows.
 #[tauri::command]
@@ -28,20 +32,35 @@ pub fn list_services(state: State<'_, AppState>) -> Result<Vec<ServiceView>, Str
 
 /// Put a service on the leash. It starts on the safest policy.
 #[tauri::command(async)]
-pub fn add_monitor(state: State<'_, AppState>, name: String) -> Result<(), String> {
-    state.add_monitor(&name)
+pub fn add_monitor(app: AppHandle, state: State<'_, AppState>, name: String) -> Result<(), String> {
+    state.add_monitor(&name)?;
+    tray::refresh(&app);
+    Ok(())
 }
 
 /// Take a service off the leash.
 #[tauri::command(async)]
-pub fn remove_monitor(state: State<'_, AppState>, name: String) -> Result<(), String> {
-    state.remove_monitor(&name)
+pub fn remove_monitor(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<(), String> {
+    state.remove_monitor(&name)?;
+    tray::refresh(&app);
+    Ok(())
 }
 
 /// Change the policy of a service that is on the leash.
 #[tauri::command(async)]
-pub fn set_policy(state: State<'_, AppState>, name: String, policy: Policy) -> Result<(), String> {
-    state.set_policy(&name, policy)
+pub fn set_policy(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+    policy: Policy,
+) -> Result<(), String> {
+    state.set_policy(&name, policy)?;
+    tray::refresh(&app);
+    Ok(())
 }
 
 /// Stop a service now, because the user asked.
@@ -58,8 +77,10 @@ pub fn start_now(state: State<'_, AppState>, name: String) -> Result<StartOutcom
 
 /// Pause or resume the watchdog.
 #[tauri::command(async)]
-pub fn set_paused(state: State<'_, AppState>, paused: bool) -> Result<(), String> {
-    state.set_paused(paused)
+pub fn set_paused(app: AppHandle, state: State<'_, AppState>, paused: bool) -> Result<(), String> {
+    state.set_paused(paused)?;
+    tray::refresh(&app);
+    Ok(())
 }
 
 /// Let Leash try a service again after it gave up on it.
@@ -83,12 +104,24 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<General, String> {
 
 /// Change the settings block.
 #[tauri::command(async)]
-pub fn set_settings(state: State<'_, AppState>, settings: General) -> Result<(), String> {
-    state.set_settings(settings)
+pub fn set_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: General,
+) -> Result<(), String> {
+    state.set_settings(settings)?;
+    tray::refresh(&app);
+    Ok(())
 }
 
 /// Add a service to the list Leash never touches.
 #[tauri::command(async)]
-pub fn add_never_touch(state: State<'_, AppState>, name: String) -> Result<(), String> {
-    state.add_never_touch(&name)
+pub fn add_never_touch(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<(), String> {
+    state.add_never_touch(&name)?;
+    tray::refresh(&app);
+    Ok(())
 }

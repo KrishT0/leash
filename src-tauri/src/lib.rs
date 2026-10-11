@@ -1,12 +1,14 @@
-//! The app itself: the engine behind Tauri, and the events it sends to the UI.
+//! The app itself: the engine behind Tauri, the tray, and the events it sends to
+//! the UI.
 
 mod commands;
 mod state;
+mod tray;
 
 use leash_engine::watchdog::WatchEvent;
 use state::{AppState, CaughtEvent, ErrorEvent, NotifiedEvent, StateChangedEvent};
 use std::sync::mpsc::Receiver;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, WindowEvent};
 
 /// Events the UI listens for, as section 10 names them.
 const SERVICE_CAUGHT: &str = "service_caught";
@@ -29,11 +31,25 @@ pub fn run() {
     };
 
     tauri::Builder::default()
+        // This runs first, so a second launch only shows the window of the one
+        // that is already running, and then ends.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            tray::show_window(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .manage(app_state)
         .setup(move |app| {
             forward_events(app.handle().clone(), received)?;
+            tray::create(app.handle())?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the window hides it. The tray and the engine keep running,
+            // and Exit in the tray menu is the way out.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
