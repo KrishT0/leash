@@ -11,10 +11,11 @@ export const PAGE_TITLES: Record<Page, string> = {
   settings: "Settings",
 };
 
-/** The four events the engine sends, as section 10 names them. */
-export const ENGINE_EVENTS = [
-  "service_caught",
-  "service_notified",
-  "state_changed",
-  "engine_error",
-];
+/** The event that means a service was caught, which the orbit animates. */
+export const SERVICE_CAUGHT = "service_caught";
+
+/** The events that only mean the numbers on screen are out of date. */
+export const REFRESH_EVENTS = ["service_notified", "state_changed", "engine_error"];
+
+/** How long a caught service stays out at the rim. */
+export const CAUGHT_HOLD_MS = 900;

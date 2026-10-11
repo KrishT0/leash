@@ -28,6 +28,48 @@
   --radius-button: 8px;
   --radius-nav: 10px;
   --radius-pill: 99px;
+
+  /*
+   * The orbit's motion. Section 11 allows motion here and nowhere else, and
+   * the reduced motion rule in the base layer switches all of it off. The
+   * elements that move are centred by a wrapper, so the keyframes only scale.
+   */
+  --animate-breathe: breathe 6s ease-in-out infinite;
+  --animate-ripple: ripple 0.9s ease-out;
+  --animate-bump: bump 0.4s cubic-bezier(0.3, 1.7, 0.5, 1);
+  --animate-dash: dashm 0.35s linear infinite;
+
+  @keyframes breathe {
+    50% {
+      transform: scale(1.025);
+    }
+  }
+
+  @keyframes ripple {
+    from {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(3.2);
+    }
+  }
+
+  @keyframes bump {
+    from {
+      transform: scale(1.2);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes dashm {
+    to {
+      stroke-dashoffset: -2.6;
+    }
+  }
 }
 
 /*

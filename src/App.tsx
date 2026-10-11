@@ -4,10 +4,11 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
 import { Banner } from "./components/Banner";
+import type { Caught } from "./components/Orbit";
 import { Rail } from "./components/Rail";
 import { TopBar } from "./components/TopBar";
 import { getState, setPaused } from "./lib/api";
-import { ENGINE_EVENTS, type Page } from "./lib/pages";
+import { CAUGHT_HOLD_MS, REFRESH_EVENTS, SERVICE_CAUGHT, type Page } from "./lib/pages";
 import type { Snapshot } from "./lib/types";
 import { Activity } from "./pages/Activity";
 import { Home } from "./pages/Home";
@@ -18,6 +19,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [state, setState] = useState<Snapshot | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [caught, setCaught] = useState<Caught | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -33,10 +35,22 @@ export default function App() {
   }, [refresh]);
 
   // The engine tells the window when something happened, so the numbers on
-  // screen do not wait for the next poll.
+  // screen do not wait for the next poll. A catch also flies out of the orbit
+  // for a moment, which is what section 11 asks the orbit to show.
   useEffect(() => {
-    const listening = ENGINE_EVENTS.map((name) => listen(name, () => void refresh()));
+    let hold: number | undefined;
+    const listening = [
+      listen<{ service: string }>(SERVICE_CAUGHT, (event) => {
+        setCaught({ name: event.payload.service, at: Date.now() });
+        window.clearTimeout(hold);
+        hold = window.setTimeout(() => setCaught(null), CAUGHT_HOLD_MS);
+        void refresh();
+      }),
+      ...REFRESH_EVENTS.map((name) => listen(name, () => void refresh())),
+    ];
+
     return () => {
+      window.clearTimeout(hold);
       for (const pending of listening) {
         void pending.then((stop) => stop());
       }
@@ -67,7 +81,7 @@ export default function App() {
         <Banner state={state} problem={problem} />
 
         {state ? (
-          <Page page={page} state={state} />
+          <Page page={page} state={state} caught={caught} onViewAll={() => setPage("services")} />
         ) : (
           <p className="text-[13px] text-muted">Reading the services.</p>
         )}
@@ -77,10 +91,20 @@ export default function App() {
 }
 
 /** The page that is showing. */
-function Page({ page, state }: { page: Page; state: Snapshot }) {
+function Page({
+  page,
+  state,
+  caught,
+  onViewAll,
+}: {
+  page: Page;
+  state: Snapshot;
+  caught: Caught | null;
+  onViewAll: () => void;
+}) {
   switch (page) {
     case "home":
-      return <Home state={state} />;
+      return <Home state={state} caught={caught} onViewAll={onViewAll} />;
     case "services":
       return <Services state={state} />;
     case "activity":
