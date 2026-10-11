@@ -2,3 +2,5 @@
 //!
 //! This crate holds no Tauri code. Only `scm.rs` and `elevation.rs` may call
 //! the Windows API.
+
+pub mod safety;

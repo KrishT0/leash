@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Fax",
+    "display": "Fax",
+    "reason": "Most PCs never use faxing",
+    "effect": "You cannot send faxes",
+    "risk": "low"
+  },
+  {
+    "name": "DiagTrack",
+    "display": "Connected User Experiences and Telemetry",
+    "reason": "Sends diagnostic data to Microsoft",
+    "effect": "No effect on daily use",
+    "risk": "low"
+  },
+  {
+    "name": "XboxGipSvc",
+    "display": "Xbox Accessory Management Service",
+    "reason": "Only needed for Xbox accessories",
+    "effect": "Xbox accessories may stop working",
+    "risk": "low"
+  },
+  {
+    "name": "XblGameSave",
+    "display": "Xbox Live Game Save",
+    "reason": "Only needed for Xbox cloud saves",
+    "effect": "Cloud saves can stop syncing",
+    "risk": "medium"
+  },
+  {
+    "name": "SysMain",
+    "display": "SysMain",
+    "reason": "Can add disk and memory use",
+    "effect": "Some apps may open slower",
+    "risk": "low"
+  },
+  {
+    "name": "WSearch",
+    "display": "Windows Search",
+    "reason": "Indexing can use disk and CPU",
+    "effect": "Windows search is slower",
+    "risk": "medium"
+  },
+  {
+    "name": "bthserv",
+    "display": "Bluetooth Support Service",
+    "reason": "Only needed if you use Bluetooth",
+    "effect": "Bluetooth devices stop working",
+    "risk": "medium"
+  },
+  {
+    "name": "Spooler",
+    "display": "Print Spooler",
+    "reason": "Only needed if you print",
+    "effect": "You cannot print",
+    "risk": "medium"
+  }
+]
