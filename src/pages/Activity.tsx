@@ -4,8 +4,9 @@
 
 import { useEffect, useState } from "react";
 import { getLog } from "../lib/api";
-import { clockTime, entryIsOk, entryResult, entryText } from "../lib/format";
+import { clockTime, entryResult, entryText, entryTone } from "../lib/format";
 import type { Entry } from "../lib/types";
+import { TONE_TEXT } from "../lib/ui";
 
 /** How much of the log this page reads. */
 const LOG_LIMIT = 500;
@@ -59,11 +60,7 @@ export function Activity({ revision }: ActivityProps) {
                   <span className="block font-mono text-xs text-muted">{entry.error}</span>
                 ) : null}
               </span>
-              <b
-                className={`font-mono text-xs font-medium ${
-                  entryIsOk(entry) ? "text-ok" : "text-warn"
-                }`}
-              >
+              <b className={`font-mono text-xs font-medium ${TONE_TEXT[entryTone(entry)]}`}>
                 {entryResult(entry)}
               </b>
             </li>

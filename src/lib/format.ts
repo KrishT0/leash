@@ -1,5 +1,6 @@
 // Turning engine values into the words and the numbers the UI shows.
 
+import type { Tone } from "./ui";
 import type { DayCount, Entry } from "./types";
 
 /** "H:MM:SS", the way the design reference writes a duration. */
@@ -18,12 +19,32 @@ export function clockTime(timestamp: string): string {
   return Number.isNaN(at.getTime()) ? "--:--" : `${two(at.getHours())}:${two(at.getMinutes())}`;
 }
 
-/** True when a log line reads as a good result, which colours it green. */
-export function entryIsOk(entry: Entry): boolean {
-  if (entry.result === "success" || entry.result === "blocked" || entry.result === "gave_up") {
-    return entry.action === "stop" || entry.action === "start" || entry.action === null;
+/**
+ * The colour of a log line, as one of the tag tones.
+ *
+ * A catch wears the accent, because it is the one thing Leash did itself. A
+ * service that stayed down, which is to say a block, wears green. A notice is
+ * grey, and anything that failed is red or amber. This keeps held, caught and
+ * notified apart at a glance, which green for all three does not.
+ */
+export function entryTone(entry: Entry): Tone {
+  if (entry.action === "notify") {
+    return "dim";
   }
-  return false;
+  if (entry.result === "failure") {
+    return "error";
+  }
+  if (entry.action === "stop" && entry.result === "success" && entry.event !== "manual") {
+    return "accent";
+  }
+  if (
+    entry.result === "not_elevated" ||
+    entry.result === "gave_up" ||
+    entry.result === "no_facts"
+  ) {
+    return "warn";
+  }
+  return "ok";
 }
 
 /** What happened, in one short line, for the feed and the log. */

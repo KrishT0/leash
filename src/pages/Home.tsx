@@ -1,21 +1,24 @@
-// Home. Section 11 puts five things in one centred column: the orbit and the
-// counter, the quiet line, the held back cards, the latest catches, and the
-// seven day bars.
+// Home, as the design reference composes it: two columns. On the left the day
+// counter, the quiet line and the seven day bars, then the held back cards.
+// On the right the orbit, then the last four lines of the log.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Bezel } from "../components/Bezel";
 import { Orbit, type Caught } from "../components/Orbit";
 import { ServiceCard } from "../components/ServiceCard";
+import { Tag } from "../components/Tag";
 import { getLog } from "../lib/api";
 import {
   clockTime,
   duration,
-  entryIsOk,
   entryResult,
   entryText,
+  entryTone,
   lastSevenDays,
   weekdayLetter,
 } from "../lib/format";
 import type { Entry, Snapshot } from "../lib/types";
+import { EYEBROW, GHOST } from "../lib/ui";
 
 /** How many log lines Home reads. It covers the cards, the feed and the bars. */
 const LOG_LIMIT = 200;
@@ -115,101 +118,126 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
   const busiest = Math.max(...days.map((day) => day.count), 1);
 
   return (
-    <div className="grid gap-2">
-      <div className="pt-6 pb-2 text-center">
+    <div className="grid items-start gap-4 min-[1150px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <Bezel className="min-[1150px]:col-start-1" coreClassName="gap-6">
+          <p className={`m-0 ${EYEBROW}`}>Caught today</p>
+
+          <div className="-mt-2">
+            <div className="text-[76px] leading-[0.9] font-semibold tracking-[-0.05em]">
+              {state.caught_today}
+            </div>
+            <div className="mt-3 text-[15px] text-muted">
+              {onLeash.length === 1
+                ? "1 service on a leash"
+                : `${onLeash.length} services on a leash`}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-hair pt-5">
+            <span className="font-mono text-[13px] text-muted">{quiet}</span>
+            <Tag tone={state.paused ? "warn" : "ok"}>
+              {state.paused ? "Watchdog paused" : "Watchdog active"}
+            </Tag>
+          </div>
+
+          <div>
+            <div className="flex h-16 items-end gap-2">
+              {days.map((day, index) => (
+                <i
+                  key={day.date}
+                  className={`block w-full rounded-t-[10px] rounded-b-[3px] transition-[height] duration-700 ease-spring ${
+                    index === 6
+                      ? "bg-accent shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]"
+                      : "bg-border"
+                  }`}
+                  style={{ height: `${Math.max(6, (day.count / busiest) * 100)}%` }}
+                  title={`${day.count} caught`}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex gap-2 font-mono text-[11px] text-muted">
+              {days.map((day) => (
+                <span key={day.date} className="flex-1 text-center">
+                  {weekdayLetter(day.date)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Bezel>
+
+      <Bezel
+        className="min-[1150px]:col-start-2 min-[1150px]:row-start-1"
+        coreClassName="gap-3"
+      >
         <Orbit
           services={state.monitored}
           caught={caught}
           paused={state.paused}
           today={state.caught_today}
         />
-        <p className="mt-[18px] font-mono text-[13px] text-muted">{quiet}</p>
-      </div>
+        <p className="m-0 text-center font-mono text-[11px] leading-relaxed text-muted">
+          The dot at the rim is the service Leash just caught.
+        </p>
+      </Bezel>
 
-      <div>
-        <Section title="Held back" count={onLeash.length} />
+      <Bezel className="min-[1150px]:col-start-1" coreClassName="gap-4">
+        <div className="flex items-center justify-between gap-3">
+            <p className={`m-0 ${EYEBROW}`}>Held back</p>
+            {onLeash.length > 0 ? (
+              <Tag tone="dim">{onLeash.length} on a leash</Tag>
+            ) : null}
+          </div>
 
-        <div ref={cards} className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5">
-          {onLeash.slice(0, fit).map(({ service, lastCatch }) => (
-            <ServiceCard
-              key={service.name}
-              service={service}
-              lastCatch={lastCatch}
-              now={now}
-              justCaught={caught?.name === service.name}
-              onOpen={onViewAll}
-            />
-          ))}
-        </div>
-
-        {onLeash.length === 0 ? (
-          <p className="text-muted">Nothing on a leash yet. Pick a service in Services.</p>
-        ) : null}
-
-        {onLeash.length > fit ? (
-          <button type="button" onClick={onViewAll} className="mt-3 rounded-pill border border-border px-3.5 py-[5px] text-xs font-medium text-muted hover:border-accent hover:text-text">
-            View all {onLeash.length}
-          </button>
-        ) : null}
-
-        <Section title="Caught" />
-        <ul className="m-0 list-none p-0">
-          {feed.map((entry, index) => (
-            <li
-              key={`${entry.ts}-${entry.service}-${index}`}
-              className="flex items-baseline gap-3 border-t border-border py-[9px]"
+          {onLeash.length === 0 ? (
+            <p className="m-0 text-[13px] text-muted">
+              Nothing on a leash yet. Pick a service in Services.
+            </p>
+          ) : (
+            <div
+              ref={cards}
+              className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5"
             >
-              <span className="font-mono text-xs text-muted">{clockTime(entry.ts)}</span>
-              <span className="flex-1" title={entry.error ?? undefined}>
-                {entryText(entry)}
-              </span>
-              <b
-                className={`font-mono text-xs font-medium ${
-                  entryIsOk(entry) ? "text-ok" : "text-warn"
-                }`}
-              >
-                {entryResult(entry)}
-              </b>
-            </li>
-          ))}
-        </ul>
-
-        <Section title="Last 7 days" />
-        <div className="flex h-16 gap-2">
-          {days.map((day, index) => (
-            <div key={day.date} className="flex flex-1 items-end">
-              <i
-                className={`block w-full rounded-t-md rounded-b-sm transition-[height] duration-300 ${
-                  index === 6 ? "bg-text/80" : "bg-border"
-                }`}
-                style={{ height: `${(day.count / busiest) * 100}%` }}
-                title={`${day.count} caught`}
-              />
+              {onLeash.slice(0, fit).map(({ service, lastCatch }) => (
+                <ServiceCard
+                  key={service.name}
+                  service={service}
+                  lastCatch={lastCatch}
+                  now={now}
+                  justCaught={caught?.name === service.name}
+                  onOpen={onViewAll}
+                />
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="mt-1.5 flex gap-2 font-mono text-[11px] text-muted">
-          {days.map((day) => (
-            <span key={day.date} className="flex-1 text-center">
-              {weekdayLetter(day.date)}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+          )}
 
-/** A section heading, with the count when there is one. */
-function Section({ title, count }: { title: string; count?: number }) {
-  return (
-    <h2 className="mt-[30px] mb-2.5 flex items-center justify-between text-sm font-medium text-muted">
-      <span>
-        {title}
-        {count === undefined ? null : (
-          <i className="ml-1.5 font-normal opacity-70">{count}</i>
-        )}
-      </span>
-    </h2>
+          {onLeash.length > fit ? (
+            <button type="button" onClick={onViewAll} className={`${GHOST} self-start`}>
+              View all {onLeash.length}
+            </button>
+          ) : null}
+        </Bezel>
+
+      <Bezel className="min-[1150px]:col-start-2" coreClassName="gap-4">
+        <p className={`m-0 ${EYEBROW}`}>Caught, last four</p>
+
+          <ul className="m-0 list-none p-0">
+            {feed.map((entry, index) => (
+              <li
+                key={`${entry.ts}-${entry.service}-${index}`}
+                className="flex items-center gap-3 border-t border-hair py-3 first:border-t-0 first:pt-0"
+              >
+                <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
+                <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
+                  {entryText(entry)}
+                </span>
+                <Tag tone={entryTone(entry)}>{entryResult(entry)}</Tag>
+              </li>
+            ))}
+            {feed.length === 0 ? (
+              <li className="text-[13px] text-muted">Nothing has happened yet.</li>
+            ) : null}
+          </ul>
+        </Bezel>
+    </div>
   );
 }

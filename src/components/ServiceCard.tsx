@@ -3,6 +3,7 @@
 
 import { duration } from "../lib/format";
 import type { ServiceView } from "../lib/types";
+import { TAG, TAG_TONES } from "../lib/ui";
 
 interface ServiceCardProps {
   service: ServiceView;
@@ -17,45 +18,46 @@ interface ServiceCardProps {
 
 export function ServiceCard({ service, lastCatch, justCaught, now, onOpen }: ServiceCardProps) {
   const held = service.status === "stopped" && lastCatch !== null;
+  const running = service.status === "running";
+  const tone = justCaught ? "warn" : running ? "dim" : "ok";
 
-  const status = justCaught
+  const state = justCaught
     ? "Tried to start"
     : held
       ? `Held ${duration(now - lastCatch)}`
-      : service.status === "running"
-        ? policyText(service)
+      : running
+        ? "Running"
         : "Stopped";
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`flex flex-col gap-0.5 rounded-card border bg-surface p-3.5 text-left transition-transform active:scale-[0.97] ${
-        justCaught ? "border-warn" : "border-border"
+      className={`flex flex-col gap-1 rounded-card border p-3.5 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-shell active:scale-[0.97] ${
+        justCaught
+          ? "border-warn bg-warn/8 shadow-[0_0_28px_-12px_var(--color-warn)]"
+          : "border-border bg-shell"
       }`}
     >
-      <b className="font-semibold">{service.display_name}</b>
-      <span className="font-mono text-xs text-muted">{service.name}</span>
-      <span
-        className={`mt-3 flex items-center gap-1.5 font-mono text-xs ${
-          service.status === "running" ? "text-warn" : "text-ok"
-        }`}
-      >
-        <i aria-hidden="true" className="inline-block size-2 rounded-full bg-current" />
-        {status}
-      </span>
+      <b className="text-[15px] leading-snug font-medium">{service.display_name}</b>
+      <span className="font-mono text-[11px] text-muted">{service.name}</span>
+      <div className="mt-auto pt-3">
+        <span className={`${TAG} ${TAG_TONES[tone]}`}>
+          {state} · {policyText(service)}
+        </span>
+      </div>
     </button>
   );
 }
 
-/** What a running service is doing, said in three words. */
+/** What the policy is, in two words at most. */
 function policyText(service: ServiceView): string {
   switch (service.policy) {
     case "notify":
-      return "Running, notify";
+      return "Notify";
     case "dry_run":
-      return "Running, dry run";
+      return "Dry run";
     default:
-      return "Running";
+      return "Stop";
   }
 }

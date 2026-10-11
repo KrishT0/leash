@@ -126,7 +126,7 @@ export function Orbit({ services, caught, paused, today }: OrbitProps) {
   }, [services, caught]);
 
   return (
-    <div className="relative mx-auto aspect-square w-[min(88vw,360px)]">
+    <div className="relative mx-auto aspect-square w-full max-w-[360px]">
       <svg
         viewBox="0 0 100 100"
         aria-label="Services on a leash"

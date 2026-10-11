@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockTime, duration, entryIsOk, entryResult, entryText, lastSevenDays, weekdayLetter } from "./format";
+import { clockTime, duration, entryResult, entryText, entryTone, lastSevenDays, weekdayLetter } from "./format";
 import type { Entry } from "./types";
 
 function entry(part: Partial<Entry>): Entry {
@@ -133,15 +133,33 @@ describe("entryResult", () => {
   });
 });
 
-describe("entryIsOk", () => {
-  it("should colour a catch and a blocked service green", () => {
-    expect(entryIsOk(entry({ action: "stop", result: "success" }))).toBe(true);
-    expect(entryIsOk(entry({ action: null, result: "blocked" }))).toBe(true);
+describe("entryTone", () => {
+  it("should give an automatic catch the accent, so it stands apart from a held service", () => {
+    expect(entryTone(entry({ action: "stop", event: "started", result: "success" }))).toBe(
+      "accent",
+    );
   });
 
-  it("should colour a notice, a dry run and a failure amber", () => {
-    expect(entryIsOk(entry({ action: "notify" }))).toBe(false);
-    expect(entryIsOk(entry({ action: "dry_run" }))).toBe(false);
-    expect(entryIsOk(entry({ action: "stop", result: "failure" }))).toBe(false);
+  it("should give a blocked service green, because it stayed down", () => {
+    expect(entryTone(entry({ action: null, result: "blocked" }))).toBe("ok");
+  });
+
+  it("should give a notice grey, so it does not read as an action", () => {
+    expect(entryTone(entry({ action: "notify", result: "notified" }))).toBe("dim");
+  });
+
+  it("should give a failure red", () => {
+    expect(entryTone(entry({ action: "stop", result: "failure" }))).toBe("error");
+    expect(entryTone(entry({ action: "start", result: "failure" }))).toBe("error");
+  });
+
+  it("should give a missing right, a give up and missing facts amber", () => {
+    expect(entryTone(entry({ action: null, result: "not_elevated" }))).toBe("warn");
+    expect(entryTone(entry({ action: null, result: "gave_up" }))).toBe("warn");
+    expect(entryTone(entry({ action: null, result: "no_facts" }))).toBe("warn");
+  });
+
+  it("should leave a stop done by hand green", () => {
+    expect(entryTone(entry({ action: "stop", event: "manual", result: "success" }))).toBe("ok");
   });
 });
