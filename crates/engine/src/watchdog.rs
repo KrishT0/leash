@@ -813,6 +813,66 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "needs an elevated shell and LeashTestSvc"]
+    fn should_give_up_after_the_cap_on_a_service_that_keeps_coming_back() {
+        if scm::query(TEST_SERVICE).is_err() {
+            println!("{TEST_SERVICE} is not installed. Run scripts/elevated-test.ps1.");
+            return;
+        }
+
+        let (sink, events) = std::sync::mpsc::channel();
+        let services = vec![Monitored {
+            name: TEST_SERVICE.to_string(),
+            policy: Policy::Stop,
+        }];
+        let mut settings = settings("cap");
+        settings.elevated = true;
+        settings.stop_wait = Duration::from_secs(10);
+
+        let mut watchdog = Watchdog::start(settings, &services, sink).expect("start");
+        start_test_service();
+
+        let mut caught = 0;
+        let deadline = Instant::now() + Duration::from_secs(180);
+        loop {
+            assert!(
+                Instant::now() < deadline,
+                "timed out after {caught} catches"
+            );
+
+            match events
+                .recv_timeout(Duration::from_secs(60))
+                .expect("an event")
+            {
+                WatchEvent::Caught {
+                    outcome: StopOutcome::Stopped,
+                    ..
+                } => {
+                    caught += 1;
+                    // Bring the service back, so the watchdog gets another turn.
+                    start_test_service();
+                }
+                WatchEvent::GaveUp { .. } => break,
+                other => panic!("unexpected event: {other:?}"),
+            }
+        }
+
+        assert_eq!(caught, MAX_STOPS, "the cap must allow {MAX_STOPS} stops");
+        watchdog.stop();
+    }
+
+    /// The dummy service that `scripts/elevated-test.ps1` creates.
+    const TEST_SERVICE: &str = "LeashTestSvc";
+
+    fn start_test_service() {
+        let started = std::process::Command::new("sc.exe")
+            .args(["start", TEST_SERVICE])
+            .status()
+            .expect("sc start");
+        assert!(started.success(), "sc start {TEST_SERVICE} failed");
+    }
+
+    #[test]
     #[ignore = "starts real watch threads"]
     fn should_watch_a_service_and_stop_cleanly() {
         let (sink, events) = std::sync::mpsc::channel();

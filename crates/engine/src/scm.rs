@@ -952,7 +952,15 @@ mod tests {
                 return;
             }
             Err(error) => panic!("LeashTestSvc: {error:?}"),
-            Ok(_) => {}
+            Ok(info) => {
+                // The wait and the control call are only tested when the
+                // service is really running.
+                assert_eq!(
+                    info.status,
+                    Status::Running,
+                    "the script must leave the test service running"
+                );
+            }
         }
 
         let outcome = stop("LeashTestSvc", DEFAULT_STOP_WAIT).expect("stop");
