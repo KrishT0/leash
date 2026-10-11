@@ -818,13 +818,17 @@ mod tests {
             std::env::temp_dir().join(format!("leash-watch-test-{}-{tag}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
 
+        // A count left over from an earlier run would break the catch check.
+        let stats = std::env::temp_dir().join(format!("leash-watch-stats-{tag}.json"));
+        let _ = std::fs::remove_file(&stats);
+
         WatchSettings {
             lists: SafetyLists::embedded().expect("lists"),
             never_touch: Vec::new(),
             paused: false,
             elevated: false,
             log: ActivityLog::new(dir),
-            stats: std::env::temp_dir().join(format!("leash-watch-stats-{tag}.json")),
+            stats,
             stop_wait: Duration::from_secs(1),
         }
     }
@@ -845,6 +849,10 @@ mod tests {
         let mut settings = settings("cap");
         settings.elevated = true;
         settings.stop_wait = Duration::from_secs(5);
+        // Both paths are checked at the end, so they are taken before the
+        // settings move into the watchdog.
+        let stats = settings.stats.clone();
+        let log_dir = settings.log.dir().to_path_buf();
 
         let mut watchdog = Watchdog::start(settings, &services, sink).expect("start");
         start_test_service();
@@ -883,6 +891,16 @@ mod tests {
         }
 
         assert_eq!(caught, MAX_STOPS, "the cap must allow {MAX_STOPS} stops");
+
+        // The same run must have counted the catches and written the log.
+        let counted = crate::log::read_stats(&stats).expect("stats");
+        assert_eq!(
+            counted.get(&today()),
+            Some(&(MAX_STOPS as u32)),
+            "the daily catch count"
+        );
+        assert_eq!(logged_catches(&log_dir), MAX_STOPS, "the logged catches");
+
         watchdog.stop();
     }
 
@@ -898,30 +916,50 @@ mod tests {
     }
 
     /// Print how the service moves through its states after a start. This never
-    /// fails the test, because the watchdog may stop the service again at any
-    /// moment.
+    /// fails the test. The watchdog normally answers within a few hundred
+    /// milliseconds, faster than a poll can sample the running state, so a move
+    /// to StopPending is the proof that it worked.
     fn show_start_timeline() {
         let start = Instant::now();
         let mut last = None;
+        let mut left_stopped = false;
 
-        while start.elapsed() < Duration::from_secs(30) {
-            match scm::query(TEST_SERVICE) {
-                Ok(info) => {
-                    if last != Some(info.status) {
-                        println!("  {:>6} ms: {:?}", start.elapsed().as_millis(), info.status);
-                    }
-                    let running = info.status == Status::Running || last == Some(Status::Running);
+        while start.elapsed() < Duration::from_secs(10) {
+            if let Ok(info) = scm::query(TEST_SERVICE) {
+                if last != Some(info.status) {
+                    println!("  {:>6} ms: {:?}", start.elapsed().as_millis(), info.status);
                     last = Some(info.status);
-                    if running {
-                        return;
-                    }
                 }
-                Err(error) => println!("  {:>6} ms: {error:?}", start.elapsed().as_millis()),
+                if info.status != Status::Stopped {
+                    left_stopped = true;
+                }
+                // The test never stops the service here, so a move to StopPending
+                // can only come from the watchdog.
+                if info.status == Status::Running
+                    || (left_stopped && info.status == Status::StopPending)
+                {
+                    return;
+                }
             }
-            std::thread::sleep(Duration::from_millis(250));
+            std::thread::sleep(Duration::from_millis(100));
         }
 
-        println!("  {TEST_SERVICE} did not reach Running within 30 s");
+        println!("  {TEST_SERVICE} did not start within 10 s");
+    }
+
+    /// How many catches the activity log holds.
+    fn logged_catches(dir: &std::path::Path) -> usize {
+        let mut count = 0;
+        for entry in std::fs::read_dir(dir).expect("log dir") {
+            let path = entry.expect("entry").path();
+            let text = std::fs::read_to_string(&path).unwrap_or_default();
+            count += text
+                .lines()
+                .filter(|line| line.contains("\"action\":\"stop\""))
+                .filter(|line| line.contains("\"result\":\"success\""))
+                .count();
+        }
+        count
     }
 
     #[test]
