@@ -49,6 +49,15 @@ export interface Verdict {
   reason: Reason;
 }
 
+/** A known optional service, with the plain reason from the engine's list. */
+export interface Suggested {
+  name: string;
+  display: string;
+  reason: string;
+  effect: string;
+  risk: "low" | "medium";
+}
+
 /** One service, with the safety check and the policy the user chose. */
 export interface ServiceView extends ServiceInfo {
   verdict: Verdict;
@@ -58,6 +67,8 @@ export interface ServiceView extends ServiceInfo {
   gave_up: boolean;
   /** Only getService fills this in. */
   dependents: string[];
+  /** Set when the service is on the engine's suggested list. */
+  suggested: Suggested | null;
 }
 
 /** A day and the catches on it. */

@@ -5,7 +5,7 @@
 use leash_engine::config::{Config, General, Monitored, Policy, config_path, validate};
 use leash_engine::elevation;
 use leash_engine::log::{self, ActivityLog, Entry};
-use leash_engine::safety::{SafetyLists, Verdict};
+use leash_engine::safety::{SafetyLists, Suggested, Verdict};
 use leash_engine::scm::{self, DEFAULT_WAIT, ServiceInfo, StartOutcome, StopOutcome};
 use leash_engine::watchdog::{WatchEvent, WatchSettings, Watchdog};
 use serde::Serialize;
@@ -36,6 +36,8 @@ pub struct ServiceView {
     /// The running services that depend on it. Only the single service read
     /// fills this in, because it costs a call.
     pub dependents: Vec<String>,
+    /// The plain reason and the risk, for a service on the suggested list.
+    pub suggested: Option<Suggested>,
 }
 
 /// A day and its catch count, for the weekly bars.
@@ -340,6 +342,8 @@ impl AppState {
         let gave_up = gave_up
             .iter()
             .any(|name| name.eq_ignore_ascii_case(&info.name));
+        // The suggested list is small, so one lookup per service is cheap.
+        let suggested = self.lists.suggestion(&info.name).cloned();
 
         ServiceView {
             info,
@@ -348,9 +352,9 @@ impl AppState {
             policy,
             gave_up,
             dependents,
+            suggested,
         }
     }
-
     /// The newest log lines.
     pub fn log(&self, limit: usize) -> Result<Vec<Entry>, String> {
         log::read_entries(&self.log_dir, limit.min(MAX_LOG_LIMIT))

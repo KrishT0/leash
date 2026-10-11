@@ -81,7 +81,13 @@ export default function App() {
         <Banner state={state} problem={problem} />
 
         {state ? (
-          <Page page={page} state={state} caught={caught} onViewAll={() => setPage("services")} />
+          <Page
+            page={page}
+            state={state}
+            caught={caught}
+            onViewAll={() => setPage("services")}
+            onChanged={() => void refresh()}
+          />
         ) : (
           <p className="text-[13px] text-muted">Reading the services.</p>
         )}
@@ -96,17 +102,19 @@ function Page({
   state,
   caught,
   onViewAll,
+  onChanged,
 }: {
   page: Page;
   state: Snapshot;
   caught: Caught | null;
   onViewAll: () => void;
+  onChanged: () => void;
 }) {
   switch (page) {
     case "home":
       return <Home state={state} caught={caught} onViewAll={onViewAll} />;
     case "services":
-      return <Services state={state} />;
+      return <Services onChanged={onChanged} />;
     case "activity":
       return <Activity />;
     case "settings":
