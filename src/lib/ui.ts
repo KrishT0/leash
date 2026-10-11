@@ -18,15 +18,6 @@ export const TAG_TONES = {
 /** The tone names, so a module can name one without pulling in the classes. */
 export type Tone = keyof typeof TAG_TONES;
 
-/** The same tones as a text colour, for a cell that is not a tag. */
-export const TONE_TEXT: Record<Tone, string> = {
-  ok: "text-ok",
-  warn: "text-warn",
-  error: "text-error",
-  accent: "text-accent",
-  dim: "text-muted",
-};
-
 /** The tag shape, with no colour of its own. */
 export const TAG =
   "inline-block rounded-island px-2.5 py-1 font-display text-[10px] leading-relaxed font-medium tracking-[0.12em] whitespace-nowrap uppercase";

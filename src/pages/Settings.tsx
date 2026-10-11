@@ -2,9 +2,12 @@
 // notices, starting with Windows, starting minimized, and starting the watchdog.
 
 import { useState } from "react";
+import { Bezel } from "../components/Bezel";
 import { Switch } from "../components/Switch";
+import { Tag } from "../components/Tag";
 import { setSettings } from "../lib/api";
 import type { General, Snapshot } from "../lib/types";
+import { EYEBROW } from "../lib/ui";
 
 interface SettingsProps {
   state: Snapshot;
@@ -33,55 +36,57 @@ export function Settings({ state, onChanged }: SettingsProps) {
   ];
 
   return (
-    <section>
-      <h2 className="mt-0 mb-2.5 text-sm font-medium text-muted">Preferences</h2>
+    <section className="grid gap-4">
+      <Bezel coreClassName="gap-4">
+        <p className={`m-0 ${EYEBROW}`}>This machine</p>
 
-      <div className="mt-2.5 rounded-card border border-border bg-surface px-4 py-1">
-        <div className="flex items-center justify-between gap-3 py-3">
-          <span className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2.5 text-[15px]">
             <i
               aria-hidden="true"
-              className={`inline-block size-2 rounded-full ${
-                state.elevated ? "bg-ok" : "bg-error"
-              }`}
+              className={`block size-2 rounded-island ${state.elevated ? "bg-ok" : "bg-error"}`}
             />
             {state.elevated ? "Running elevated" : "Not elevated"}
           </span>
-          <span className="text-muted">
+          <Tag tone={state.elevated ? "ok" : "error"}>
             {state.elevated ? "Stop actions on" : "Stop actions off"}
-          </span>
+          </Tag>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border py-3">
+        <div className="flex items-center justify-between gap-3 border-t border-hair pt-4 text-[15px]">
           <span>Platform</span>
           <span className="text-muted">Windows 11 only</span>
         </div>
-      </div>
+      </Bezel>
 
-      <div className="mt-2.5 rounded-card border border-border bg-surface px-4 py-1">
-        {switches.map(({ key, label }) => (
-          <label
-            key={key}
-            className="flex items-center justify-between gap-3 border-t border-border py-2.5 first:border-t-0"
-          >
-            <span>{label}</span>
-            <Switch
-              checked={state.general[key]}
-              onChange={(checked) => void change({ [key]: checked })}
-              label={label}
-            />
-          </label>
-        ))}
-      </div>
+      <Bezel coreClassName="gap-4">
+        <p className={`m-0 ${EYEBROW}`}>Preferences</p>
 
-      {problem ? <p className="my-2 text-[13px] text-error">{problem}</p> : null}
+        <div>
+          {switches.map(({ key, label }) => (
+            <label
+              key={key}
+              className="flex items-center justify-between gap-4 border-t border-hair py-4 text-[15px] first:border-t-0 first:pt-1"
+            >
+              <span>{label}</span>
+              <Switch
+                checked={state.general[key]}
+                onChange={(checked) => void change({ [key]: checked })}
+                label={label}
+              />
+            </label>
+          ))}
+        </div>
 
-      {state.config_error ? (
-        <p className="my-2 text-[13px] text-warn">
-          Leash is using its default settings, because the config file could not be read. It will
-          not write over that file until you fix it.
-        </p>
-      ) : null}
+        {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}
+
+        {state.config_error ? (
+          <p className="m-0 text-[13px] text-warn">
+            Leash is using its default settings, because the config file could not be read. It will
+            not write over that file until you fix it.
+          </p>
+        ) : null}
+      </Bezel>
     </section>
   );
 }
