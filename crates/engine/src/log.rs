@@ -4,7 +4,7 @@
 //! When a file passes 1 MB, the day gets another part.
 
 use crate::config::write_atomic;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -17,7 +17,7 @@ pub const KEEP_DAYS: i64 = 30;
 pub const MAX_FILE_BYTES: u64 = 1024 * 1024;
 
 /// One line of the activity log.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     /// RFC 3339 UTC, for example `2026-10-11T18:58:02Z`.
     pub ts: String,
@@ -299,6 +299,78 @@ fn parse_date(text: &str) -> Option<i64> {
     Some(days_from_civil(year, month, day))
 }
 
+/// The newest entries, newest first, up to `limit`.
+pub fn read_entries(dir: &Path, limit: usize) -> Result<Vec<Entry>, LogError> {
+    let listing = match fs::read_dir(dir) {
+        Ok(listing) => listing,
+        // No log folder yet simply means nothing has happened.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(source) => {
+            return Err(LogError::Dir {
+                dir: dir.to_path_buf(),
+                source,
+            });
+        }
+    };
+
+    let mut files = Vec::new();
+    for item in listing.flatten() {
+        let name = item.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if let Some((date, part)) = log_file_order(name) {
+            files.push((date, part, item.path()));
+        }
+    }
+    // Newest day first, and inside a day the highest part first.
+    files.sort_by(|left, right| (right.0, right.1).cmp(&(left.0, left.1)));
+
+    let mut entries = Vec::new();
+    for (_, _, path) in files {
+        let text = match fs::read_to_string(&path) {
+            Ok(text) => text,
+            Err(error) => {
+                tracing::warn!(file = %path.display(), %error, "cannot read a log file");
+                continue;
+            }
+        };
+
+        for line in text.lines().rev() {
+            if entries.len() >= limit {
+                return Ok(entries);
+            }
+            match serde_json::from_str::<Entry>(line) {
+                Ok(entry) => entries.push(entry),
+                // A line cut short by a power loss is skipped, not fatal.
+                Err(error) => tracing::warn!(%error, "cannot parse a log line"),
+            }
+        }
+    }
+
+    Ok(entries)
+}
+
+/// The day and the part number in `activity-2026-10-11.jsonl` and
+/// `activity-2026-10-11.2.jsonl`.
+fn log_file_order(name: &str) -> Option<(i64, u32)> {
+    let rest = name.strip_prefix("activity-")?;
+    let date = parse_date(rest.get(..10)?)?;
+    let tail = rest.get(10..)?;
+
+    if tail == ".jsonl" {
+        return Some((date, 0));
+    }
+
+    let part = tail
+        .strip_prefix('.')?
+        .strip_suffix(".jsonl")?
+        .parse()
+        .ok()?;
+
+    Some((date, part))
+}
+
 /// The date in `activity-2026-10-11.jsonl` or `activity-2026-10-11.2.jsonl`.
 fn file_date(name: &str) -> Option<i64> {
     let rest = name.strip_prefix("activity-")?;
@@ -515,6 +587,94 @@ mod tests {
 
         assert!(dir.is_dir());
         assert_eq!(log.dir(), dir.as_path());
+    }
+
+    #[test]
+    fn should_read_the_newest_entries_first() {
+        let dir = temp_dir("read");
+        let mut log = ActivityLog::new(dir.clone());
+
+        for service in ["One", "Two", "Three"] {
+            log.append(&Entry::new(service, "started")).expect("append");
+        }
+
+        let entries = read_entries(&dir, 2).expect("read");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].service, "Three");
+        assert_eq!(entries[1].service, "Two");
+    }
+
+    #[test]
+    fn should_read_every_entry_when_the_limit_is_large() {
+        let dir = temp_dir("read-all");
+        let mut log = ActivityLog::new(dir.clone());
+        for service in ["One", "Two"] {
+            log.append(&Entry::new(service, "started")).expect("append");
+        }
+
+        assert_eq!(read_entries(&dir, 100).expect("read").len(), 2);
+        assert!(read_entries(&dir, 0).expect("read").is_empty());
+    }
+
+    #[test]
+    fn should_order_the_files_by_day_and_part() {
+        assert_eq!(
+            log_file_order("activity-2026-10-11.jsonl"),
+            Some((20_737, 0))
+        );
+        assert_eq!(
+            log_file_order("activity-2026-10-11.2.jsonl"),
+            Some((20_737, 2))
+        );
+        assert_eq!(
+            log_file_order("activity-2026-10-12.jsonl"),
+            Some((20_738, 0))
+        );
+        assert_eq!(log_file_order("activity-nope.jsonl"), None);
+        assert_eq!(log_file_order("other-2026-10-11.jsonl"), None);
+        assert_eq!(log_file_order("activity-2026-10-11.2.txt"), None);
+    }
+
+    #[test]
+    fn should_read_the_newest_day_before_an_older_one() {
+        let dir = temp_dir("read-days");
+        let line = |service: &str| {
+            format!(
+                "{{\"ts\":\"2026-01-01T00:00:00Z\",\"service\":\"{service}\",\"event\":\"started\",\"action\":null,\"result\":null,\"error\":null}}\n"
+            )
+        };
+        fs::write(dir.join("activity-2026-10-10.jsonl"), line("Older")).expect("write");
+        fs::write(
+            dir.join("activity-2026-10-11.2.jsonl"),
+            line("NewerPartTwo"),
+        )
+        .expect("write");
+        fs::write(dir.join("activity-2026-10-11.jsonl"), line("NewerPartOne")).expect("write");
+
+        let entries = read_entries(&dir, 10).expect("read");
+        let names: Vec<&str> = entries.iter().map(|e| e.service.as_str()).collect();
+        assert_eq!(names, ["NewerPartTwo", "NewerPartOne", "Older"]);
+    }
+
+    #[test]
+    fn should_give_no_entries_when_the_folder_is_missing() {
+        let dir = temp_dir("read-missing").join("gone");
+        assert!(read_entries(&dir, 10).expect("read").is_empty());
+    }
+
+    #[test]
+    fn should_skip_a_broken_line() {
+        let dir = temp_dir("read-broken");
+        let name = format!("activity-{}.jsonl", today());
+        fs::write(
+            dir.join(name),
+            "not json\n{\"ts\":\"t\",\"service\":\"Good\",\"event\":\"started\",\"action\":null,\"result\":null,\"error\":null}\n",
+        )
+        .expect("write");
+
+        let entries = read_entries(&dir, 10).expect("read");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].service, "Good");
     }
 
     #[test]
