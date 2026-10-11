@@ -1,4 +1,4 @@
-//! Windows Service Control Manager calls. Read only for now.
+//! Windows Service Control Manager calls.
 //!
 //! This file and `elevation.rs` are the only places that call the Windows API.
 //! Every call sits inside a safe function. Each `unsafe` block has a comment
@@ -7,21 +7,23 @@
 use crate::safety::ServiceFacts;
 use serde::{Deserialize, Serialize};
 use std::mem::size_of;
+use std::time::{Duration, Instant};
 use windows::Win32::Foundation::{
-    ERROR_ACCESS_DENIED, ERROR_INSUFFICIENT_BUFFER, ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST,
-    WIN32_ERROR,
+    ERROR_ACCESS_DENIED, ERROR_DEPENDENT_SERVICES_RUNNING, ERROR_INSUFFICIENT_BUFFER,
+    ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST, WIN32_ERROR,
 };
 use windows::Win32::System::Services::{
-    CloseServiceHandle, ENUM_SERVICE_STATUS_PROCESSW, ENUM_SERVICE_STATUSW, EnumDependentServicesW,
-    EnumServicesStatusExW, OpenSCManagerW, OpenServiceW, QUERY_SERVICE_CONFIGW,
-    QueryServiceConfigW, QueryServiceStatusEx, SC_ENUM_PROCESS_INFO, SC_HANDLE, SC_MANAGER_CONNECT,
-    SC_MANAGER_ENUMERATE_SERVICE, SC_STATUS_PROCESS_INFO, SERVICE_ACCEPT_STOP, SERVICE_ACTIVE,
-    SERVICE_AUTO_START, SERVICE_BOOT_START, SERVICE_CONTINUE_PENDING, SERVICE_DEMAND_START,
-    SERVICE_DISABLED, SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_PAUSE_PENDING,
-    SERVICE_PAUSED, SERVICE_QUERY_CONFIG, SERVICE_QUERY_STATUS, SERVICE_RUNNING,
-    SERVICE_START_PENDING, SERVICE_START_TYPE, SERVICE_STATE_ALL, SERVICE_STATUS_CURRENT_STATE,
-    SERVICE_STATUS_PROCESS, SERVICE_STOP_PENDING, SERVICE_STOPPED, SERVICE_SYSTEM_START,
-    SERVICE_WIN32,
+    CloseServiceHandle, ControlService, ENUM_SERVICE_STATUS_PROCESSW, ENUM_SERVICE_STATUSW,
+    EnumDependentServicesW, EnumServicesStatusExW, OpenSCManagerW, OpenServiceW,
+    QUERY_SERVICE_CONFIGW, QueryServiceConfigW, QueryServiceStatusEx, SC_ENUM_PROCESS_INFO,
+    SC_HANDLE, SC_MANAGER_CONNECT, SC_MANAGER_ENUMERATE_SERVICE, SC_STATUS_PROCESS_INFO,
+    SERVICE_ACCEPT_STOP, SERVICE_ACTIVE, SERVICE_AUTO_START, SERVICE_BOOT_START,
+    SERVICE_CONTINUE_PENDING, SERVICE_CONTROL_STOP, SERVICE_DEMAND_START, SERVICE_DISABLED,
+    SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_PAUSE_PENDING, SERVICE_PAUSED,
+    SERVICE_QUERY_CONFIG, SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START_PENDING,
+    SERVICE_START_TYPE, SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE,
+    SERVICE_STATUS_PROCESS, SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED,
+    SERVICE_SYSTEM_START, SERVICE_WIN32,
 };
 use windows::core::{Error, HRESULT, PCWSTR};
 
@@ -265,6 +267,101 @@ pub fn dependents(name: &str) -> Result<Vec<String>, ScmError> {
     Ok(names)
 }
 
+/// How long a stop may take before Leash gives up waiting.
+pub const DEFAULT_STOP_WAIT: Duration = Duration::from_secs(30);
+
+/// What happened when Leash asked a service to stop.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StopOutcome {
+    /// The service stopped.
+    Stopped,
+    /// Other running services depend on it, so Windows refused the stop.
+    DependentsRunning { dependents: Vec<String> },
+    /// The service does not accept a stop command.
+    NotAccepted,
+    /// The wait ended and the service is still not stopped.
+    NotStopped,
+}
+
+/// Ask a service to stop.
+///
+/// The caller runs the safety check first. This function does not consult the
+/// deny list, so it must never be called on a blocked service.
+///
+/// The wait can stretch to three times `wait` while the service keeps reporting
+/// progress through its checkpoint. After that Leash stops waiting.
+pub fn stop(name: &str, wait: Duration) -> Result<StopOutcome, ScmError> {
+    let manager = open_manager()?;
+    // The stop procedure needs these two rights and no more.
+    let handle = open_service(&manager, name, SERVICE_STOP | SERVICE_QUERY_STATUS)?;
+
+    let status = status_of(&handle, name)?;
+    if status_from(status.dwCurrentState) == Status::Stopped {
+        return Ok(StopOutcome::Stopped);
+    }
+    // A stopped service reports no accepted controls, so this check has to come
+    // after the one above.
+    if !accepts_stop(&status) {
+        return Ok(StopOutcome::NotAccepted);
+    }
+
+    let mut asked = SERVICE_STATUS::default();
+    // SAFETY: the handle carries SERVICE_STOP, and the out parameter points at a
+    // live local that stays alive for the call.
+    let answer = unsafe { ControlService(handle.0, SERVICE_CONTROL_STOP, &mut asked) };
+    match answer {
+        Ok(()) => {}
+        Err(error) if is_win32(&error, ERROR_DEPENDENT_SERVICES_RUNNING) => {
+            // Never stop a dependent. Report them instead.
+            return Ok(StopOutcome::DependentsRunning {
+                dependents: dependents(name).unwrap_or_default(),
+            });
+        }
+        Err(source) => return Err(classify(source, name)),
+    }
+
+    wait_for_stop(&handle, name, wait)
+}
+
+/// Wait while the service is stopping. The wait hint sets the pace, the
+/// checkpoint shows progress, and the deadline ends it.
+fn wait_for_stop(handle: &Handle, name: &str, wait: Duration) -> Result<StopOutcome, ScmError> {
+    let start = Instant::now();
+    let hard_deadline = start + wait.saturating_mul(3);
+    let mut deadline = start + wait;
+    let mut last_checkpoint = 0u32;
+
+    loop {
+        let status = status_of(handle, name)?;
+        match status_from(status.dwCurrentState) {
+            Status::Stopped => return Ok(StopOutcome::Stopped),
+            Status::StopPending => {}
+            // The service is running again, or it never left.
+            _ => return Ok(StopOutcome::NotStopped),
+        }
+
+        if status.dwCheckPoint != last_checkpoint {
+            last_checkpoint = status.dwCheckPoint;
+            // The service is working. Give it another window, but never past
+            // the hard deadline.
+            deadline = (Instant::now() + wait).min(hard_deadline);
+        }
+
+        let now = Instant::now();
+        if now >= deadline {
+            return Ok(StopOutcome::NotStopped);
+        }
+
+        // Ask faster than the hint the service gave, so a stop that finishes
+        // early is noticed at once.
+        let hint = u64::from(status.dwWaitHint.max(100));
+        let step = Duration::from_millis(hint / 4)
+            .clamp(Duration::from_millis(50), Duration::from_millis(500));
+        std::thread::sleep(step.min(deadline - now));
+    }
+}
+
 /// The facts that the safety check needs about one service.
 ///
 /// An error here means the facts are unknown. The caller must not stop a
@@ -272,13 +369,16 @@ pub fn dependents(name: &str) -> Result<Vec<String>, ScmError> {
 /// services, such as `RpcSs`, when the process is not elevated.
 pub fn facts(name: &str) -> Result<ServiceFacts, ScmError> {
     let info = query(name)?;
+    let running_dependents = dependents(name)?.len();
 
     Ok(ServiceFacts {
         name: info.name,
-        accepts_stop: info.accepts_stop,
+        // Windows reports no accepted controls while a service is stopped.
+        // Stopping it again is a no-op, so it does not count as blocked.
+        accepts_stop: info.accepts_stop || info.status == Status::Stopped,
         is_driver: info.is_driver,
         is_win32: info.is_win32,
-        running_dependents: dependents(name)?.len(),
+        running_dependents,
     })
 }
 
@@ -412,7 +512,7 @@ fn info_from(name: String, status: &SERVICE_STATUS_PROCESS, config: ConfigSummar
         name,
         status: status_from(status.dwCurrentState),
         startup: config.startup,
-        accepts_stop: status.dwControlsAccepted & SERVICE_ACCEPT_STOP != 0,
+        accepts_stop: accepts_stop(status),
         is_win32: kinds & SERVICE_WIN32.0 != 0,
         is_driver: kinds & SERVICE_DRIVER.0 != 0,
         third_party: config.third_party,
@@ -421,6 +521,12 @@ fn info_from(name: String, status: &SERVICE_STATUS_PROCESS, config: ConfigSummar
             pid => Some(pid),
         },
     }
+}
+
+/// True when the service accepts a stop command. Windows reports no controls
+/// while a service is stopped.
+fn accepts_stop(status: &SERVICE_STATUS_PROCESS) -> bool {
+    status.dwControlsAccepted & SERVICE_ACCEPT_STOP != 0
 }
 
 fn status_from(state: SERVICE_STATUS_CURRENT_STATE) -> Status {
@@ -638,6 +744,63 @@ mod tests {
         for name in &names {
             assert!(!name.is_empty());
         }
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
+    fn should_report_a_missing_service_on_a_stop() {
+        let error = stop("LeashNoSuchService1234", Duration::from_secs(1)).unwrap_err();
+        assert!(matches!(error, ScmError::NotFound { .. }), "{error:?}");
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
+    fn should_not_call_a_stopped_service_blocked() {
+        let services = list_services().expect("list");
+        let stopped = services
+            .iter()
+            .find(|service| {
+                service.status == Status::Stopped && service.is_win32 && !service.is_driver
+            })
+            .expect("a stopped Win32 service");
+
+        // Windows reports no accepted controls while a service is stopped.
+        assert!(
+            !stopped.accepts_stop,
+            "{} reports controls while stopped",
+            stopped.name
+        );
+
+        // Being stopped is not a reason to block a service.
+        let facts = facts(&stopped.name).expect("facts");
+        assert!(
+            facts.accepts_stop,
+            "{} must not be blocked just for being stopped",
+            stopped.name
+        );
+    }
+
+    #[test]
+    #[ignore = "needs an elevated shell and LeashTestSvc"]
+    fn should_stop_the_test_service() {
+        // Only the dummy service that the test script creates may be stopped
+        // from a test. Never a real service.
+        match query("LeashTestSvc") {
+            Err(ScmError::NotFound { .. }) => {
+                println!("LeashTestSvc is not installed. Run the elevated test script.");
+                return;
+            }
+            Err(error) => panic!("LeashTestSvc: {error:?}"),
+            Ok(_) => {}
+        }
+
+        let outcome = stop("LeashTestSvc", DEFAULT_STOP_WAIT).expect("stop");
+        assert_eq!(outcome, StopOutcome::Stopped);
+
+        // The service is down now, so a second stop is a no-op and must not
+        // report that the service refuses a stop command.
+        let again = stop("LeashTestSvc", DEFAULT_STOP_WAIT).expect("stop again");
+        assert_eq!(again, StopOutcome::Stopped);
     }
 
     #[test]

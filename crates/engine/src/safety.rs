@@ -17,7 +17,9 @@ const SUGGESTED_JSON: &str = include_str!("../data/suggested.json");
 pub struct ServiceFacts {
     /// Internal service name, for example `Spooler`.
     pub name: String,
-    /// The service accepts `SERVICE_CONTROL_STOP`.
+    /// The service accepts `SERVICE_CONTROL_STOP`, or it is already stopped, in
+    /// which case a stop is a no-op. Windows reports no accepted controls while
+    /// a service is stopped.
     pub accepts_stop: bool,
     /// The service is a kernel driver.
     pub is_driver: bool,
