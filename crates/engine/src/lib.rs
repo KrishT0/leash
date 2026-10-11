@@ -8,3 +8,4 @@ pub mod elevation;
 pub mod log;
 pub mod safety;
 pub mod scm;
+pub mod watchdog;
