@@ -3,9 +3,16 @@
 //! This half of the module is the decision. It has no Windows calls, so it is
 //! tested on any OS. The event loop that feeds it lives further down.
 
-use crate::config::Policy;
-use crate::safety::Verdict;
-use std::collections::VecDeque;
+use crate::config::{Monitored, Policy};
+use crate::log::{ActivityLog, Entry, LogError, bump_catch, today};
+use crate::safety::{SafetyLists, Verdict};
+use crate::scm::{self, ScmError, Status, StopOutcome, WatchState, Watched};
+use std::collections::{HashMap, VecDeque};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 /// Stops allowed for one service inside [`STOP_WINDOW`].
@@ -44,11 +51,17 @@ pub enum SkipReason {
 }
 
 /// The stop count for one service, and whether Leash has given up on it.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct RetryState {
     stops: VecDeque<Instant>,
     /// False after the user has been told Leash gave up. Cleared by `rearm`.
     armed: bool,
+}
+
+impl Default for RetryState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RetryState {
@@ -141,6 +154,364 @@ pub fn decide(
             }
         }
     }
+}
+
+/// An event that the watchdog sends to the app.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WatchEvent {
+    /// A monitored service started and Leash stopped it.
+    Caught {
+        service: String,
+        outcome: StopOutcome,
+    },
+    /// A monitored service started and Leash told the user.
+    Notified { service: String },
+    /// A monitored service started and Leash wrote down what a stop would do.
+    WouldStop { service: String },
+    /// A service used up its stops inside the window.
+    GaveUp { service: String },
+    /// One service failed, for example because Windows denied the read.
+    Failed { service: String, error: String },
+}
+
+/// What the watchdog needs before it starts.
+pub struct WatchSettings {
+    /// The embedded safety lists.
+    pub lists: SafetyLists,
+    /// The user list that Leash must never touch.
+    pub never_touch: Vec<String>,
+    pub paused: bool,
+    /// True when this process may stop services.
+    pub elevated: bool,
+    pub log: ActivityLog,
+    /// Where the daily catch counts go.
+    pub stats: PathBuf,
+    pub stop_wait: Duration,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum WatchError {
+    #[error(transparent)]
+    Scm(#[from] ScmError),
+    #[error(transparent)]
+    Log(#[from] LogError),
+    #[error("cannot start a watch thread for {service}: {source}")]
+    Thread {
+        service: String,
+        #[source]
+        source: std::io::Error,
+    },
+}
+
+/// Everything the watch threads share.
+struct Shared {
+    lists: SafetyLists,
+    never_touch: Vec<String>,
+    paused: AtomicBool,
+    elevated: AtomicBool,
+    sink: Sender<WatchEvent>,
+    log: Mutex<ActivityLog>,
+    stats: PathBuf,
+    retries: Mutex<HashMap<String, RetryState>>,
+    stop_wait: Duration,
+}
+
+/// The watchdog. One thread watches each monitored service.
+pub struct Watchdog {
+    shared: Arc<Shared>,
+    quit: scm::StopEvent,
+    threads: Vec<JoinHandle<()>>,
+}
+
+impl Watchdog {
+    /// Start one watch thread for each monitored service.
+    pub fn start(
+        settings: WatchSettings,
+        services: &[Monitored],
+        sink: Sender<WatchEvent>,
+    ) -> Result<Self, WatchError> {
+        let shared = Arc::new(Shared {
+            lists: settings.lists,
+            never_touch: settings.never_touch,
+            paused: AtomicBool::new(settings.paused),
+            elevated: AtomicBool::new(settings.elevated),
+            sink,
+            log: Mutex::new(settings.log),
+            stats: settings.stats,
+            retries: Mutex::new(HashMap::new()),
+            stop_wait: settings.stop_wait,
+        });
+        let quit = scm::StopEvent::new()?;
+        let mut threads = Vec::with_capacity(services.len());
+
+        for service in services {
+            // A service that cannot be opened stops the whole start. The
+            // threads that are already running are told to stop first.
+            let watched = match scm::watch(&service.name, &quit) {
+                Ok(watched) => watched,
+                Err(error) => {
+                    join_all(&mut threads, &quit);
+                    return Err(error.into());
+                }
+            };
+
+            let name = service.name.clone();
+            let policy = service.policy;
+            let shared = Arc::clone(&shared);
+            let started = std::thread::Builder::new()
+                .name(format!("leash-watch-{}", service.name))
+                .spawn(move || watch_loop(watched, name, policy, shared));
+
+            match started {
+                Ok(thread) => threads.push(thread),
+                Err(source) => {
+                    join_all(&mut threads, &quit);
+                    return Err(WatchError::Thread {
+                        service: service.name.clone(),
+                        source,
+                    });
+                }
+            }
+        }
+
+        Ok(Self {
+            shared,
+            quit,
+            threads,
+        })
+    }
+
+    /// Stop every watch thread and wait for them to end.
+    pub fn stop(&mut self) {
+        join_all(&mut self.threads, &self.quit);
+    }
+
+    /// Pause or resume. While paused the watchdog takes no action at all.
+    pub fn set_paused(&self, paused: bool) {
+        self.shared.paused.store(paused, Ordering::Relaxed);
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.shared.paused.load(Ordering::Relaxed)
+    }
+
+    /// Tell the watchdog whether this process may stop services.
+    pub fn set_elevated(&self, elevated: bool) {
+        self.shared.elevated.store(elevated, Ordering::Relaxed);
+    }
+
+    /// Let Leash try a service again after the stop cap. The user asks for it.
+    pub fn rearm(&self, service: &str) {
+        if let Some(retry) = lock(&self.shared.retries).get_mut(service) {
+            retry.rearm();
+        }
+    }
+}
+
+impl Drop for Watchdog {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+fn join_all(threads: &mut Vec<JoinHandle<()>>, quit: &scm::StopEvent) {
+    quit.set();
+    for thread in threads.drain(..) {
+        let _ = thread.join();
+    }
+}
+
+/// One thread per service. Windows reports one change per watch, so the loop
+/// arms the watch again on every round.
+fn watch_loop(mut watched: Watched, name: String, policy: Policy, shared: Arc<Shared>) {
+    loop {
+        match watched.wait() {
+            Ok(WatchState::Quit) => return,
+            Ok(WatchState::Changed) => {}
+            Err(error) => {
+                report(&shared, &name, &error.to_string());
+                return;
+            }
+        }
+
+        // A change can be a stop or a pending state. Only a running service
+        // gets the policy.
+        match watched.status() {
+            Ok(Status::Running) => {}
+            Ok(_) => continue,
+            Err(error) => {
+                report(&shared, &name, &error.to_string());
+                return;
+            }
+        }
+
+        if let Err(error) = act(&name, policy, &shared) {
+            report(&shared, &name, &error.to_string());
+        }
+    }
+}
+
+/// Apply the policy to one service that is running now.
+fn act(name: &str, policy: Policy, shared: &Shared) -> Result<(), WatchError> {
+    let now = Instant::now();
+    let paused = shared.paused.load(Ordering::Relaxed);
+    let elevated = shared.elevated.load(Ordering::Relaxed);
+
+    // The safety check runs again here, right before any action. Without the
+    // facts Leash cannot tell whether a stop is safe, so it does not stop.
+    let verdict = match scm::facts(name) {
+        Ok(facts) => shared.lists.assess(&facts, &shared.never_touch),
+        Err(error) => {
+            let text = error.to_string();
+            write_log(
+                shared,
+                name,
+                Some("unknown"),
+                Some("no_facts"),
+                Some(text.clone()),
+            )?;
+            report(shared, name, &text);
+            return Ok(());
+        }
+    };
+
+    let decision = {
+        let retries = lock(&shared.retries);
+        let unseen = RetryState::new();
+        let retry = retries.get(name).unwrap_or(&unseen);
+        decide(policy, paused, elevated, &verdict, retry, now)
+    };
+
+    match decision {
+        // While paused Leash stays quiet, and writes nothing.
+        Decision::Skip(SkipReason::Paused) => {}
+        Decision::Skip(SkipReason::Blocked) => {
+            write_log(shared, name, None, Some("blocked"), None)?;
+        }
+        Decision::Skip(SkipReason::GaveUp) => {
+            write_log(shared, name, None, Some("gave_up"), None)?;
+            send(
+                shared,
+                WatchEvent::GaveUp {
+                    service: name.to_string(),
+                },
+            );
+        }
+        Decision::Skip(SkipReason::NotElevated) => {
+            write_log(shared, name, Some("stop"), Some("not_elevated"), None)?;
+        }
+        Decision::Notify => {
+            write_log(shared, name, Some("notify"), Some("notified"), None)?;
+            send(
+                shared,
+                WatchEvent::Notified {
+                    service: name.to_string(),
+                },
+            );
+        }
+        Decision::DryRun => {
+            write_log(shared, name, Some("dry_run"), Some("would_stop"), None)?;
+            send(
+                shared,
+                WatchEvent::WouldStop {
+                    service: name.to_string(),
+                },
+            );
+        }
+        Decision::Stop { after } => {
+            // Wait the backoff, so a service that comes straight back is not
+            // hammered.
+            if !after.is_zero() {
+                std::thread::sleep(after);
+            }
+
+            let outcome = scm::stop(name, shared.stop_wait)?;
+            // Every attempt counts, so a service that refuses to stop also
+            // reaches the cap and the backoff.
+            lock(&shared.retries)
+                .entry(name.to_string())
+                .or_default()
+                .record_stop(now);
+
+            let (result, error) = result_text(&outcome);
+            write_log(shared, name, Some("stop"), Some(result), error)?;
+
+            if matches!(outcome, StopOutcome::Stopped) {
+                // A catch, for the weekly bars.
+                if let Err(error) = bump_catch(&shared.stats, &today()) {
+                    tracing::warn!(%error, "cannot count a catch");
+                }
+            }
+
+            send(
+                shared,
+                WatchEvent::Caught {
+                    service: name.to_string(),
+                    outcome,
+                },
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// The result text for the log, and the reason when there is one.
+fn result_text(outcome: &StopOutcome) -> (&'static str, Option<String>) {
+    match outcome {
+        StopOutcome::Stopped => ("success", None),
+        StopOutcome::NotAccepted => (
+            "failure",
+            Some("the service does not accept a stop command".to_string()),
+        ),
+        StopOutcome::NotStopped => (
+            "failure",
+            Some("the service did not stop in time".to_string()),
+        ),
+        StopOutcome::DependentsRunning { dependents } => (
+            "failure",
+            Some(format!(
+                "dependent services are running: {}",
+                dependents.join(", ")
+            )),
+        ),
+    }
+}
+
+fn write_log(
+    shared: &Shared,
+    service: &str,
+    action: Option<&str>,
+    result: Option<&str>,
+    error: Option<String>,
+) -> Result<(), WatchError> {
+    let mut entry = Entry::new(service, "started");
+    entry.action = action.map(str::to_string);
+    entry.result = result.map(str::to_string);
+    entry.error = error;
+
+    lock(&shared.log).append(&entry).map_err(WatchError::Log)
+}
+
+fn report(shared: &Shared, service: &str, error: &str) {
+    send(
+        shared,
+        WatchEvent::Failed {
+            service: service.to_string(),
+            error: error.to_string(),
+        },
+    );
+}
+
+fn send(shared: &Shared, event: WatchEvent) {
+    // The app may have closed the channel while it shuts down.
+    let _ = shared.sink.send(event);
+}
+
+/// Take a lock, even when a thread panicked while holding it. The log and the
+/// stop counts still work in that case.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poison| poison.into_inner())
 }
 
 #[cfg(test)]
@@ -404,5 +775,80 @@ mod tests {
             retry.record_stop(start);
         }
         assert!(retry.has_given_up(start));
+    }
+
+    #[test]
+    fn should_describe_each_stop_outcome() {
+        assert_eq!(result_text(&StopOutcome::Stopped), ("success", None));
+        assert_eq!(result_text(&StopOutcome::NotAccepted).0, "failure");
+        assert_eq!(result_text(&StopOutcome::NotStopped).0, "failure");
+
+        let outcome = StopOutcome::DependentsRunning {
+            dependents: vec!["Fax".to_string(), "Spooler".to_string()],
+        };
+        let (result, error) = result_text(&outcome);
+        assert_eq!(result, "failure");
+        assert_eq!(
+            error.as_deref(),
+            Some("dependent services are running: Fax, Spooler")
+        );
+    }
+
+    // The tests below start real watch threads.
+
+    fn settings(tag: &str) -> WatchSettings {
+        let dir =
+            std::env::temp_dir().join(format!("leash-watch-test-{}-{tag}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+
+        WatchSettings {
+            lists: SafetyLists::embedded().expect("lists"),
+            never_touch: Vec::new(),
+            paused: false,
+            elevated: false,
+            log: ActivityLog::new(dir),
+            stats: std::env::temp_dir().join(format!("leash-watch-stats-{tag}.json")),
+            stop_wait: Duration::from_secs(1),
+        }
+    }
+
+    #[test]
+    #[ignore = "starts real watch threads"]
+    fn should_watch_a_service_and_stop_cleanly() {
+        let (sink, events) = std::sync::mpsc::channel();
+        let services = vec![Monitored {
+            name: "Spooler".to_string(),
+            policy: Policy::Notify,
+        }];
+
+        let mut watchdog = Watchdog::start(settings("clean"), &services, sink).expect("start");
+        assert!(!watchdog.is_paused());
+
+        watchdog.set_paused(true);
+        assert!(watchdog.is_paused());
+        watchdog.set_elevated(true);
+        watchdog.rearm("Spooler");
+
+        std::thread::sleep(Duration::from_millis(300));
+        watchdog.stop();
+
+        // Nothing changed on the machine, so no event arrived.
+        assert!(events.try_recv().is_err(), "an event arrived on its own");
+    }
+
+    #[test]
+    #[ignore = "starts real watch threads"]
+    fn should_refuse_to_watch_a_service_that_does_not_exist() {
+        let (sink, _events) = std::sync::mpsc::channel();
+        let services = vec![Monitored {
+            name: "LeashNoSuchService1234".to_string(),
+            policy: Policy::Notify,
+        }];
+
+        match Watchdog::start(settings("missing"), &services, sink) {
+            Err(WatchError::Scm(ScmError::NotFound { .. })) => {}
+            Err(error) => panic!("unexpected error: {error:?}"),
+            Ok(_) => panic!("a missing service must not start a watch"),
+        }
     }
 }

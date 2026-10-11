@@ -6,25 +6,27 @@
 
 use crate::safety::ServiceFacts;
 use serde::{Deserialize, Serialize};
+use std::ffi::c_void;
 use std::mem::size_of;
 use std::time::{Duration, Instant};
 use windows::Win32::Foundation::{
-    ERROR_ACCESS_DENIED, ERROR_DEPENDENT_SERVICES_RUNNING, ERROR_INSUFFICIENT_BUFFER,
-    ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST, WIN32_ERROR,
+    CloseHandle, ERROR_ACCESS_DENIED, ERROR_DEPENDENT_SERVICES_RUNNING, ERROR_INSUFFICIENT_BUFFER,
+    ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST, HANDLE, WAIT_EVENT, WAIT_OBJECT_0, WIN32_ERROR,
 };
 use windows::Win32::System::Services::{
     CloseServiceHandle, ControlService, ENUM_SERVICE_STATUS_PROCESSW, ENUM_SERVICE_STATUSW,
-    EnumDependentServicesW, EnumServicesStatusExW, OpenSCManagerW, OpenServiceW,
-    QUERY_SERVICE_CONFIGW, QueryServiceConfigW, QueryServiceStatusEx, SC_ENUM_PROCESS_INFO,
-    SC_HANDLE, SC_MANAGER_CONNECT, SC_MANAGER_ENUMERATE_SERVICE, SC_STATUS_PROCESS_INFO,
-    SERVICE_ACCEPT_STOP, SERVICE_ACTIVE, SERVICE_AUTO_START, SERVICE_BOOT_START,
-    SERVICE_CONTINUE_PENDING, SERVICE_CONTROL_STOP, SERVICE_DEMAND_START, SERVICE_DISABLED,
-    SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_PAUSE_PENDING, SERVICE_PAUSED,
-    SERVICE_QUERY_CONFIG, SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START_PENDING,
-    SERVICE_START_TYPE, SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE,
-    SERVICE_STATUS_PROCESS, SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED,
-    SERVICE_SYSTEM_START, SERVICE_WIN32,
+    EnumDependentServicesW, EnumServicesStatusExW, NotifyServiceStatusChangeW, OpenSCManagerW,
+    OpenServiceW, QUERY_SERVICE_CONFIGW, QueryServiceConfigW, QueryServiceStatusEx,
+    SC_ENUM_PROCESS_INFO, SC_HANDLE, SC_MANAGER_CONNECT, SC_MANAGER_ENUMERATE_SERVICE,
+    SC_STATUS_PROCESS_INFO, SERVICE_ACCEPT_STOP, SERVICE_ACTIVE, SERVICE_AUTO_START,
+    SERVICE_BOOT_START, SERVICE_CONTINUE_PENDING, SERVICE_CONTROL_STOP, SERVICE_DEMAND_START,
+    SERVICE_DISABLED, SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_NOTIFY_2W,
+    SERVICE_NOTIFY_RUNNING, SERVICE_PAUSE_PENDING, SERVICE_PAUSED, SERVICE_QUERY_CONFIG,
+    SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START_PENDING, SERVICE_START_TYPE,
+    SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE, SERVICE_STATUS_PROCESS,
+    SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED, SERVICE_SYSTEM_START, SERVICE_WIN32,
 };
+use windows::Win32::System::Threading::{CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects};
 use windows::core::{Error, HRESULT, PCWSTR};
 
 /// What a service is doing now.
@@ -87,6 +89,8 @@ pub enum ScmError {
     },
     #[error("Windows reported a size of 0 bytes for {name}")]
     Empty { name: String },
+    #[error("the watch on a service failed with wait code {code}")]
+    Wait { code: u32 },
     #[error("a service name from Windows is not valid text")]
     Name,
 }
@@ -270,6 +274,162 @@ pub fn dependents(name: &str) -> Result<Vec<String>, ScmError> {
 /// How long a stop may take before Leash gives up waiting.
 pub const DEFAULT_STOP_WAIT: Duration = Duration::from_secs(30);
 
+/// The `dwVersion` field of `SERVICE_NOTIFY_2W`. The Windows SDK defines
+/// `SERVICE_NOTIFY_STATUS_CHANGE` as this value, and the crate does not export
+/// it, because the crate names the same number `SERVICE_NOTIFY_START_PENDING`.
+const NOTIFY_VERSION: u32 = 2;
+
+/// A manual reset event that tells every watch thread to stop.
+#[derive(Debug)]
+pub struct StopEvent(HANDLE);
+
+impl StopEvent {
+    /// Create the event, ready to be waited on.
+    pub fn new() -> Result<Self, ScmError> {
+        // SAFETY: no security attributes, a manual reset event, not signalled,
+        // and unnamed, so no other process can reach it.
+        let handle = unsafe { CreateEventW(None, true, false, PCWSTR::null()) }
+            .map_err(|source| ScmError::Windows { source })?;
+
+        Ok(Self(handle))
+    }
+
+    /// Ask every watcher to stop. Safe to call more than once.
+    pub fn set(&self) {
+        // SAFETY: the handle came from CreateEventW and is still open.
+        let _ = unsafe { SetEvent(self.0) };
+    }
+}
+
+impl Drop for StopEvent {
+    fn drop(&mut self) {
+        // SAFETY: the handle came from CreateEventW and is closed once, here.
+        unsafe {
+            let _ = CloseHandle(self.0);
+        }
+    }
+}
+
+/// Why [`Watched::wait`] returned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WatchState {
+    /// The service changed state.
+    Changed,
+    /// The caller asked the watch to stop.
+    Quit,
+}
+
+/// One service under watch.
+#[derive(Debug)]
+pub struct Watched {
+    handle: Handle,
+    name: String,
+    /// The event that the Windows callback signals.
+    event: HANDLE,
+    /// The buffer the registration reads. It must stay alive and unchanged
+    /// while a notification is pending, so it is boxed and never moved.
+    notify: Box<SERVICE_NOTIFY_2W>,
+    quit: HANDLE,
+}
+
+// SAFETY: a `Watched` owns its service handle, its event handle, and its
+// notification buffer. Nothing else touches them. Every use of the raw pointers
+// inside goes straight to Windows, from the thread that owns the value.
+unsafe impl Send for Watched {}
+
+/// Watch one service. Call [`Watched::wait`] in a loop.
+pub fn watch(name: &str, quit: &StopEvent) -> Result<Watched, ScmError> {
+    let manager = open_manager()?;
+    // Watching only needs to read the status.
+    let handle = open_service(&manager, name, SERVICE_QUERY_STATUS)?;
+
+    // SAFETY: no security attributes, an auto reset event that starts
+    // unsignalled, and unnamed, so no other process can reach it.
+    let event = unsafe { CreateEventW(None, false, false, PCWSTR::null()) }
+        .map_err(|source| ScmError::Windows { source })?;
+
+    let mut notify = Box::new(SERVICE_NOTIFY_2W::default());
+    notify.dwVersion = NOTIFY_VERSION;
+    notify.pfnNotifyCallback = Some(on_status_change);
+    // The context is the event handle itself, as a plain pointer.
+    notify.pContext = event.0;
+
+    Ok(Watched {
+        handle,
+        name: name.to_string(),
+        event,
+        notify,
+        quit: quit.0,
+    })
+}
+
+impl Watched {
+    /// Arm the watch again and wait for the next status change, or for the
+    /// caller to ask the watch to stop.
+    pub fn wait(&mut self) -> Result<WatchState, ScmError> {
+        // A notification is good for one change, so the watch is renewed on
+        // every round. Windows reads the buffer during the call and the
+        // callback only reads the context, so reusing one buffer is safe.
+        // SAFETY: the service handle is open, the buffer is alive and is not
+        // touched while the call is pending.
+        let code = unsafe {
+            NotifyServiceStatusChangeW(self.handle.0, SERVICE_NOTIFY_RUNNING, &*self.notify)
+        };
+        if code != 0 {
+            return Err(classify(
+                Error::from_hresult(HRESULT::from_win32(code)),
+                &self.name,
+            ));
+        }
+
+        let handles = [self.quit, self.event];
+        // SAFETY: both handles stay open for the life of this struct, and the
+        // wait does not touch any memory of ours.
+        let waited = unsafe { WaitForMultipleObjects(&handles, false, INFINITE) };
+        if waited == WAIT_OBJECT_0 {
+            return Ok(WatchState::Quit);
+        }
+        if waited == WAIT_EVENT(WAIT_OBJECT_0.0 + 1) {
+            return Ok(WatchState::Changed);
+        }
+
+        Err(ScmError::Wait { code: waited.0 })
+    }
+
+    /// The current state of the watched service.
+    pub fn status(&self) -> Result<Status, ScmError> {
+        Ok(status_from(
+            status_of(&self.handle, &self.name)?.dwCurrentState,
+        ))
+    }
+}
+
+impl Drop for Watched {
+    fn drop(&mut self) {
+        // SAFETY: the event came from CreateEventW and is closed once, here.
+        // A notification can still arrive after this, because Windows does not
+        // say when the callback has finished. Such a late call fails, or wakes
+        // a recycled handle once. That costs one spurious wake up, which the
+        // loop handles by reading the status again.
+        unsafe {
+            let _ = CloseHandle(self.event);
+        }
+    }
+}
+
+/// The callback Windows runs on a pool thread when the status changes. It only
+/// signals the event. The context is that event handle.
+unsafe extern "system" fn on_status_change(context: *const c_void) {
+    if context.is_null() {
+        return;
+    }
+    // SAFETY: `watch` sets the context to the event handle of the service, and
+    // that handle stays open until the watch is dropped.
+    unsafe {
+        let _ = SetEvent(HANDLE(context as *mut c_void));
+    }
+}
+
 /// What happened when Leash asked a service to stop.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -383,6 +543,7 @@ pub fn facts(name: &str) -> Result<ServiceFacts, ScmError> {
 }
 
 /// A manager handle that closes itself.
+#[derive(Debug)]
 struct Handle(SC_HANDLE);
 
 impl Drop for Handle {
