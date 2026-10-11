@@ -1,0 +1,85 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+/*
+ * Section 11's tokens. Dark is the default.
+ *
+ * These are Tailwind theme values, so every one of them becomes a utility:
+ * bg-bg, bg-surface, border-border, text-text, text-muted, text-ok,
+ * text-warn, text-error, text-accent, font-display, font-mono, and the
+ * corner radii.
+ */
+@theme {
+  --color-bg: #0a0b0f;
+  --color-surface: #13151b;
+  --color-border: #262a34;
+  --color-text: #eef0f4;
+  --color-muted: #7c8493;
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-error: #f87171;
+  --color-accent: #8b5cf6;
+
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  /* Corners: cards and dialogs 12px, primary buttons 8px, nav items 10px. */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-nav: 10px;
+  --radius-pill: 99px;
+}
+
+/*
+ * The light palette follows the system, as section 11 asks. This sits outside
+ * Tailwind's layers on purpose, so it wins over the theme values above.
+ */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg: #f5f6f9;
+    --color-surface: #ffffff;
+    --color-border: #dadde4;
+    --color-text: #14171b;
+    --color-muted: #5b626d;
+    --color-ok: #16a34a;
+    --color-warn: #b45309;
+    --color-error: #dc2626;
+    --color-accent: #7c3aed;
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: 15px/1.5 var(--font-display);
+  }
+
+  button {
+    font-family: inherit;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Section 11 asks for reduced motion to be respected. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}

@@ -1,102 +1,91 @@
-// A temporary page. It proves the app talks to the engine, and the real pages
-// replace it. The design in the instructions comes later.
+// The shell: the icon rail, the top bar, the page switch, and one place that
+// reads the state from the engine and keeps it fresh from the engine's events.
 
-import { useEffect, useState } from "react";
-import { getState, setPaused, type Snapshot } from "./lib/api";
+import { listen } from "@tauri-apps/api/event";
+import { useCallback, useEffect, useState } from "react";
+import { Banner } from "./components/Banner";
+import { Rail } from "./components/Rail";
+import { TopBar } from "./components/TopBar";
+import { getState, setPaused } from "./lib/api";
+import { ENGINE_EVENTS, type Page } from "./lib/pages";
+import type { Snapshot } from "./lib/types";
+import { Activity } from "./pages/Activity";
+import { Home } from "./pages/Home";
+import { Services } from "./pages/Services";
+import { Settings } from "./pages/Settings";
 
-function App() {
+export default function App() {
+  const [page, setPage] = useState<Page>("home");
   const [state, setState] = useState<Snapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     try {
       setState(await getState());
-      setError(null);
-    } catch (problem) {
-      setError(String(problem));
+      setProblem(null);
+    } catch (error) {
+      setProblem(String(error));
     }
-  }
+  }, []);
 
   useEffect(() => {
-    refresh();
-  }, []);
+    void refresh();
+  }, [refresh]);
+
+  // The engine tells the window when something happened, so the numbers on
+  // screen do not wait for the next poll.
+  useEffect(() => {
+    const listening = ENGINE_EVENTS.map((name) => listen(name, () => void refresh()));
+    return () => {
+      for (const pending of listening) {
+        void pending.then((stop) => stop());
+      }
+    };
+  }, [refresh]);
 
   async function togglePause() {
     if (!state) return;
-    await setPaused(!state.paused);
-    refresh();
-  }
 
-  if (error) {
-    return (
-      <main style={{ fontFamily: "system-ui", padding: 24 }}>
-        <h1>Leash</h1>
-        <p style={{ color: "#DC2626" }}>The engine did not answer: {error}</p>
-      </main>
-    );
-  }
-
-  if (!state) {
-    return (
-      <main style={{ fontFamily: "system-ui", padding: 24 }}>
-        <h1>Leash</h1>
-        <p>Reading the services.</p>
-      </main>
-    );
+    try {
+      await setPaused(!state.paused);
+      await refresh();
+    } catch (error) {
+      setProblem(String(error));
+    }
   }
 
   return (
-    <main style={{ fontFamily: "system-ui", padding: 24, lineHeight: 1.6 }}>
-      <h1>Leash</h1>
+    <div className="grid min-h-full grid-cols-[68px_minmax(0,1fr)] max-[719px]:grid-cols-1">
+      <Rail page={page} onPick={setPage} />
 
-      <p>
-        {state.elevated
-          ? "Running elevated, so stop actions are on."
-          : "Leash needs administrator rights to stop services."}
-      </p>
-      <p>
-        Watchdog: {state.watching ? "watching" : "stopped"}
-        {state.paused ? ", paused" : ""}
-      </p>
-      <p>Caught today: {state.caught_today}</p>
+      <main className="mx-auto w-full max-w-[1080px] px-8 pt-6 pb-12 max-[719px]:px-3.5 max-[719px]:pt-4 max-[719px]:pb-10">
+        <TopBar
+          page={page}
+          paused={state ? state.paused : null}
+          onTogglePause={() => void togglePause()}
+        />
+        <Banner state={state} problem={problem} />
 
-      {state.config_error ? (
-        <p style={{ color: "#B45309" }}>Config problem: {state.config_error}</p>
-      ) : null}
-
-      {state.unwatched.length > 0 ? (
-        <p style={{ color: "#B45309" }}>
-          Windows will not let Leash watch: {state.unwatched.join(", ")}
-        </p>
-      ) : null}
-
-      <button onClick={togglePause} style={{ padding: "6px 12px" }}>
-        {state.paused ? "Resume" : "Pause"}
-      </button>
-
-      <h2>On the leash</h2>
-      {state.monitored.length === 0 ? (
-        <p>Nothing yet.</p>
-      ) : (
-        <ul>
-          {state.monitored.map((service) => (
-            <li key={service.name}>
-              {service.display_name} ({service.name}) — {service.policy}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2>Last 7 days</h2>
-      <ul>
-        {state.weekly.slice(-7).map((day) => (
-          <li key={day.date}>
-            {day.date}: {day.count}
-          </li>
-        ))}
-      </ul>
-    </main>
+        {state ? (
+          <Page page={page} state={state} />
+        ) : (
+          <p className="text-[13px] text-muted">Reading the services.</p>
+        )}
+      </main>
+    </div>
   );
 }
 
-export default App;
+/** The page that is showing. */
+function Page({ page, state }: { page: Page; state: Snapshot }) {
+  switch (page) {
+    case "home":
+      return <Home state={state} />;
+    case "services":
+      return <Services state={state} />;
+    case "activity":
+      return <Activity />;
+    case "settings":
+      return <Settings state={state} />;
+  }
+}
