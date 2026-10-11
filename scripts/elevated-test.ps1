@@ -4,8 +4,8 @@
 #     powershell -ExecutionPolicy Bypass -File scripts\elevated-test.ps1
 #
 # The script creates LeashTestSvc, points it at the SNMP trap binary, which is a
-# real service host that accepts a stop command, starts it, runs the ignored
-# tests, and removes the service again.
+# real service host that accepts a stop command, probes how that binary starts
+# and stops, runs the ignored tests, and removes the service again.
 #
 # It never starts, stops, or changes any other service. The service it creates
 # is separate from the SNMPTRAP service, even though both use the same binary.
@@ -14,10 +14,47 @@ $ErrorActionPreference = 'Stop'
 
 $service = 'LeashTestSvc'
 $hostExe = Join-Path $env:SystemRoot 'System32\snmptrap.exe'
+$probeSeconds = 30
 
 function Fail([string] $message) {
     Write-Host "FAIL: $message" -ForegroundColor Red
     exit 1
+}
+
+# Ask the service manager to start the service and follow it to Running.
+function Start-Dummy {
+    & sc.exe start $service | Out-Null
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $last = $null
+    while ($watch.Elapsed.TotalSeconds -lt $probeSeconds) {
+        $state = (Get-Service -Name $service -ErrorAction SilentlyContinue).Status
+        if ("$state" -ne "$last") {
+            Write-Host ("  {0,6} ms: {1}" -f [int]$watch.Elapsed.TotalMilliseconds, $state)
+            $last = "$state"
+        }
+        if ("$state" -eq 'Running') { return $true }
+        Start-Sleep -Milliseconds 250
+    }
+    Write-Host ("  still {0} after {1} seconds" -f $last, $probeSeconds) -ForegroundColor Yellow
+    return $false
+}
+
+# Ask the service manager to stop the service and follow it to Stopped.
+function Stop-Dummy {
+    & sc.exe stop $service | Out-Null
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $last = $null
+    while ($watch.Elapsed.TotalSeconds -lt $probeSeconds) {
+        $state = (Get-Service -Name $service -ErrorAction SilentlyContinue).Status
+        if ("$state" -ne "$last") {
+            Write-Host ("  {0,6} ms: {1}" -f [int]$watch.Elapsed.TotalMilliseconds, $state)
+            $last = "$state"
+        }
+        if ("$state" -eq 'Stopped') { return $true }
+        Start-Sleep -Milliseconds 250
+    }
+    Write-Host ("  still {0} after {1} seconds" -f $last, $probeSeconds) -ForegroundColor Yellow
+    return $false
 }
 
 $identity = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -43,17 +80,24 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail "cannot create $service" }
     Write-Host "created $service" -ForegroundColor Cyan
 
-    & sc.exe start $service | Out-Null
-    $state = $null
-    for ($try = 0; $try -lt 40; $try++) {
-        Start-Sleep -Milliseconds 250
-        $state = (Get-Service -Name $service -ErrorAction SilentlyContinue).Status
-        if ($state -eq 'Running') { break }
+    # The failure of the last run left one question open: does this binary reach
+    # Running a second time? The probe answers it before any test runs.
+    Write-Host "`n--- host probe: start and stop twice ---" -ForegroundColor Cyan
+    foreach ($round in 1..2) {
+        Write-Host "round $round, start:"
+        if (-not (Start-Dummy)) {
+            Fail "$service did not reach Running on start $round. The host binary cannot host a service here. Write the fixture service crate instead."
+        }
+        Write-Host "round $round, stop:"
+        if (-not (Stop-Dummy)) {
+            Fail "$service did not reach Stopped on stop $round. The host binary cannot host a service here."
+        }
     }
-    if ($state -ne 'Running') {
-        Fail "$service did not reach Running, so the host binary cannot host a service here. Write the fixture service crate instead."
+
+    Write-Host 'start again and leave it running for the stop test:'
+    if (-not (Start-Dummy)) {
+        Fail "$service did not reach Running before the tests. The host binary cannot host a service here."
     }
-    Write-Host "$service is Running" -ForegroundColor Green
 
     # The stop test needs the service running, so it is left alone here.
     $results = @()

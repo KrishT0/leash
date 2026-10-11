@@ -831,30 +831,38 @@ mod tests {
         }];
         let mut settings = settings("cap");
         settings.elevated = true;
-        settings.stop_wait = Duration::from_secs(10);
+        settings.stop_wait = Duration::from_secs(5);
 
         let mut watchdog = Watchdog::start(settings, &services, sink).expect("start");
         start_test_service();
+        show_start_timeline();
 
         let mut caught = 0;
-        let deadline = Instant::now() + Duration::from_secs(180);
+        let deadline = Instant::now() + Duration::from_secs(600);
         loop {
             assert!(
                 Instant::now() < deadline,
                 "timed out after {caught} catches"
             );
 
-            match events
-                .recv_timeout(Duration::from_secs(60))
-                .expect("an event")
-            {
+            let event = match events.recv_timeout(Duration::from_secs(120)) {
+                Ok(event) => event,
+                Err(error) => panic!(
+                    "no event in 120 s ({error:?}). {TEST_SERVICE} is now {:?}",
+                    scm::query(TEST_SERVICE).map(|info| info.status)
+                ),
+            };
+
+            match event {
                 WatchEvent::Caught {
                     outcome: StopOutcome::Stopped,
                     ..
                 } => {
                     caught += 1;
+                    println!("catch {caught} of {MAX_STOPS}");
                     // Bring the service back, so the watchdog gets another turn.
                     start_test_service();
+                    show_start_timeline();
                 }
                 WatchEvent::GaveUp { .. } => break,
                 other => panic!("unexpected event: {other:?}"),
@@ -874,6 +882,33 @@ mod tests {
             .status()
             .expect("sc start");
         assert!(started.success(), "sc start {TEST_SERVICE} failed");
+    }
+
+    /// Print how the service moves through its states after a start. This never
+    /// fails the test, because the watchdog may stop the service again at any
+    /// moment.
+    fn show_start_timeline() {
+        let start = Instant::now();
+        let mut last = None;
+
+        while start.elapsed() < Duration::from_secs(30) {
+            match scm::query(TEST_SERVICE) {
+                Ok(info) => {
+                    if last != Some(info.status) {
+                        println!("  {:>6} ms: {:?}", start.elapsed().as_millis(), info.status);
+                    }
+                    let running = info.status == Status::Running || last == Some(Status::Running);
+                    last = Some(info.status);
+                    if running {
+                        return;
+                    }
+                }
+                Err(error) => println!("  {:>6} ms: {error:?}", start.elapsed().as_millis()),
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+
+        println!("  {TEST_SERVICE} did not reach Running within 30 s");
     }
 
     #[test]
