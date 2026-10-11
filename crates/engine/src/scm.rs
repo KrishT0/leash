@@ -340,7 +340,19 @@ pub struct Watched {
 // inside goes straight to Windows, from the thread that owns the value.
 unsafe impl Send for Watched {}
 
-/// Watch one service. Call [`Watched::wait`] in a loop.
+/// How many times the notification callback has run. Test builds only, so a
+/// diagnostic can tell "the callback never ran" from "the callback ran and the
+/// wake up failed".
+#[cfg(test)]
+pub(crate) static CALLBACKS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+/// How many times the callback could not signal the event. Test builds only.
+#[cfg(test)]
+pub(crate) static SETEVENT_FAILURES: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+/// Watch one service. Call [`Watched::arm`] then [`Watched::wait`] in a loop.
 pub fn watch(name: &str, quit: &StopEvent) -> Result<Watched, ScmError> {
     let manager = open_manager()?;
     // Watching only needs to read the status.
@@ -354,7 +366,9 @@ pub fn watch(name: &str, quit: &StopEvent) -> Result<Watched, ScmError> {
     let mut notify = Box::new(SERVICE_NOTIFY_2W::default());
     notify.dwVersion = NOTIFY_VERSION;
     notify.pfnNotifyCallback = Some(on_status_change);
-    // The context is the event handle itself, as a plain pointer.
+    // The callback cannot use this value directly, because Windows passes the
+    // structure itself. The event handle sits in pContext, inside that same
+    // structure, where the callback reads it.
     notify.pContext = event.0;
 
     Ok(Watched {
@@ -395,6 +409,21 @@ impl Watched {
     /// Wait for the next status change, or for the caller to ask the watch to
     /// stop. Call [`Watched::arm`] first.
     pub fn wait(&mut self) -> Result<WatchState, ScmError> {
+        self.wait_for(INFINITE)
+    }
+
+    /// The notification fields that Windows fills in, for tests.
+    #[cfg(test)]
+    fn notification(&self) -> (u32, u32) {
+        (
+            self.notify.dwNotificationStatus,
+            self.notify.dwNotificationTriggered,
+        )
+    }
+
+    /// Wait with a limit, for tests. A timeout comes back as an error with the
+    /// wait code 258.
+    fn wait_for(&mut self, milliseconds: u32) -> Result<WatchState, ScmError> {
         let handles = [self.quit, self.event];
 
         loop {
@@ -405,7 +434,7 @@ impl Watched {
             // would never be signalled and the watch would wait for ever.
             // SAFETY: both handles stay open for the life of this struct, and
             // the wait does not touch any memory of ours.
-            let waited = unsafe { WaitForMultipleObjectsEx(&handles, false, INFINITE, true) };
+            let waited = unsafe { WaitForMultipleObjectsEx(&handles, false, milliseconds, true) };
             if waited == WAIT_OBJECT_0 {
                 return Ok(WatchState::Quit);
             }
@@ -443,17 +472,35 @@ impl Drop for Watched {
     }
 }
 
-/// The callback Windows runs on a pool thread when the status changes. It only
-/// signals the event. The context is that event handle.
-unsafe extern "system" fn on_status_change(context: *const c_void) {
-    if context.is_null() {
+/// The callback Windows runs when the status changes.
+///
+/// Windows passes the address of the notification structure that was given to
+/// `NotifyServiceStatusChangeW`, not the `pContext` value. Measured on Windows 11
+/// build 26200: treating the parameter as the context calls `SetEvent` on a heap
+/// address, which fails with ERROR_INVALID_HANDLE. The event is never signalled,
+/// so the watch waits for ever. The event handle is read out of the structure.
+unsafe extern "system" fn on_status_change(parameter: *const c_void) {
+    #[cfg(test)]
+    CALLBACKS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+    if parameter.is_null() {
         return;
     }
-    // SAFETY: `watch` sets the context to the event handle of the service, and
+
+    // SAFETY: Windows passes the address of the SERVICE_NOTIFY_2W buffer that
+    // `watch` allocated. That buffer stays alive and is not moved until the
+    // watch is dropped, and only the pContext field is read here.
+    let notify = unsafe { &*(parameter as *const SERVICE_NOTIFY_2W) };
+
+    // SAFETY: pContext holds the event handle that `watch` stored there, and
     // that handle stays open until the watch is dropped.
-    unsafe {
-        let _ = SetEvent(HANDLE(context as *mut c_void));
+    let signalled = unsafe { SetEvent(HANDLE(notify.pContext)).is_ok() };
+    #[cfg(test)]
+    if !signalled {
+        SETEVENT_FAILURES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
+    #[cfg(not(test))]
+    let _ = signalled;
 }
 
 /// What happened when Leash asked a service to stop.
@@ -790,10 +837,51 @@ fn classify(source: Error, name: &str) -> ScmError {
 mod tests {
     use super::*;
     use crate::safety::{Level, Reason, SafetyLists};
+    use windows::Win32::System::Threading::{GetCurrentThread, QueueUserAPC};
 
-    // The tests below call real Windows services, so they are ignored by
-    // default. Run them by hand on Windows 11 with:
+    // The tests below read the real token of this process.
     //     cargo test -p leash-engine -- --ignored
+
+    #[test]
+    #[ignore = "queues a real call onto this thread"]
+    fn should_run_a_queued_call_only_during_an_alertable_wait() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        static RAN: AtomicBool = AtomicBool::new(false);
+
+        unsafe extern "system" fn mark(_: usize) {
+            RAN.store(true, Ordering::SeqCst);
+        }
+
+        let never = StopEvent::new().expect("event");
+        let handles = [never.0];
+
+        // The watch waits this way, because Windows delivers the service
+        // notification as a call queued to this thread.
+        RAN.store(false, Ordering::SeqCst);
+        // SAFETY: the target is this thread, and the queued call only sets a
+        // flag in this process.
+        let queued = unsafe { QueueUserAPC(Some(mark), GetCurrentThread(), 0) };
+        assert_ne!(queued, 0, "QueueUserAPC failed");
+        let waited = unsafe { WaitForMultipleObjectsEx(&handles, false, 1_000, true) };
+        assert!(
+            RAN.load(Ordering::SeqCst),
+            "a queued call must run during an alertable wait, but the wait returned {}",
+            waited.0
+        );
+
+        // Without the alertable flag the queued call never runs. The first
+        // version of the watch used that form, and the callback never ran.
+        RAN.store(false, Ordering::SeqCst);
+        // SAFETY: the same call as above, with the alertable flag off.
+        let queued = unsafe { QueueUserAPC(Some(mark), GetCurrentThread(), 0) };
+        assert_ne!(queued, 0, "QueueUserAPC failed");
+        unsafe { WaitForMultipleObjectsEx(&handles, false, 300, false) };
+        assert!(
+            !RAN.load(Ordering::SeqCst),
+            "a plain wait must not run the queued call"
+        );
+    }
 
     #[test]
     fn should_tell_a_third_party_binary_from_a_windows_one() {
@@ -816,6 +904,40 @@ mod tests {
             "\\??\\C:\\Program Files\\Riot Vanguard\\vgk.sys"
         ));
         assert!(is_third_party("D:\\Apps\\service.exe"));
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
+    fn should_notify_at_once_when_the_service_is_already_running() {
+        // The documentation says: "If the service is already in any of the
+        // requested states when NotifyServiceStatusChange is called, the
+        // callback function is queued immediately."
+        //
+        // This proves the whole delivery path, registration to wake up, with no
+        // admin rights and no state change. Spooler stands in for a service that
+        // is already running.
+        let running = query("Spooler").expect("query");
+        assert_eq!(running.status, Status::Running, "Spooler must be running");
+
+        let quit = StopEvent::new().expect("event");
+        let mut watched = watch("Spooler", &quit).expect("watch");
+        watched.arm().expect("arm");
+
+        let before = CALLBACKS.load(std::sync::atomic::Ordering::SeqCst);
+        let outcome = watched.wait_for(3_000);
+        let after = CALLBACKS.load(std::sync::atomic::Ordering::SeqCst);
+        let (status, triggered) = watched.notification();
+
+        let changed = matches!(&outcome, Ok(WatchState::Changed));
+        assert!(
+            changed,
+            "the callback must arrive at once. outcome {outcome:?}, callbacks {before} -> \
+             {after}, buffer status {status} triggered {triggered}, wake failures {}, \
+             event handle {:?}",
+            SETEVENT_FAILURES.load(std::sync::atomic::Ordering::SeqCst),
+            watched.event.0
+        );
+        assert!(after > before, "the callback itself must run");
     }
 
     #[test]
