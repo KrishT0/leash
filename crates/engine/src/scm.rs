@@ -304,6 +304,10 @@ const NOTIFY_VERSION: u32 = 2;
 #[derive(Debug)]
 pub struct StopEvent(HANDLE);
 
+// SAFETY: a Windows event handle can be waited on or set from any thread in the
+// process, and this type owns exactly one handle that nothing else touches.
+unsafe impl Send for StopEvent {}
+
 impl StopEvent {
     /// Create the event, ready to be waited on.
     pub fn new() -> Result<Self, ScmError> {
@@ -593,6 +597,44 @@ pub enum StartOutcome {
     Disabled,
     /// The wait ended and the service is still not running.
     NotStarted,
+}
+
+/// How a stop outcome reads in the log or the UI: a result word, and the reason
+/// when there is one.
+pub fn describe(outcome: &StopOutcome) -> (&'static str, Option<String>) {
+    match outcome {
+        StopOutcome::Stopped => ("success", None),
+        StopOutcome::NotAccepted => (
+            "failure",
+            Some("the service does not accept a stop command".to_string()),
+        ),
+        StopOutcome::NotStopped => (
+            "failure",
+            Some("the service did not stop in time".to_string()),
+        ),
+        StopOutcome::DependentsRunning { dependents } => (
+            "failure",
+            Some(format!(
+                "dependent services are running: {}",
+                dependents.join(", ")
+            )),
+        ),
+    }
+}
+
+/// How a start outcome reads in the log or the UI.
+pub fn describe_start(outcome: &StartOutcome) -> (&'static str, Option<String>) {
+    match outcome {
+        StartOutcome::Started => ("success", None),
+        StartOutcome::Disabled => (
+            "failure",
+            Some("the service is disabled, and Leash changes no service setting".to_string()),
+        ),
+        StartOutcome::NotStarted => (
+            "failure",
+            Some("the service did not start in time".to_string()),
+        ),
+    }
 }
 
 /// Ask a service to start. This is the undo of a stop.
@@ -962,6 +1004,31 @@ mod tests {
             !RAN.load(Ordering::SeqCst),
             "a plain wait must not run the queued call"
         );
+    }
+
+    #[test]
+    fn should_describe_each_stop_outcome() {
+        assert_eq!(describe(&StopOutcome::Stopped), ("success", None));
+        assert_eq!(describe(&StopOutcome::NotAccepted).0, "failure");
+        assert_eq!(describe(&StopOutcome::NotStopped).0, "failure");
+
+        let outcome = StopOutcome::DependentsRunning {
+            dependents: vec!["Fax".to_string(), "Spooler".to_string()],
+        };
+        let (result, error) = describe(&outcome);
+        assert_eq!(result, "failure");
+        assert_eq!(
+            error.as_deref(),
+            Some("dependent services are running: Fax, Spooler")
+        );
+    }
+
+    #[test]
+    fn should_describe_each_start_outcome() {
+        assert_eq!(describe_start(&StartOutcome::Started), ("success", None));
+        assert_eq!(describe_start(&StartOutcome::Disabled).0, "failure");
+        assert_eq!(describe_start(&StartOutcome::NotStarted).0, "failure");
+        assert!(describe_start(&StartOutcome::Disabled).1.is_some());
     }
 
     #[test]

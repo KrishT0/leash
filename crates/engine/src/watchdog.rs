@@ -463,7 +463,7 @@ fn act(name: &str, policy: Policy, shared: &Shared) -> Result<(), WatchError> {
                 .or_default()
                 .record_stop(now);
 
-            let (result, error) = result_text(&outcome);
+            let (result, error) = scm::describe(&outcome);
             write_log(shared, name, Some("stop"), Some(result), error)?;
 
             if matches!(outcome, StopOutcome::Stopped) {
@@ -484,28 +484,6 @@ fn act(name: &str, policy: Policy, shared: &Shared) -> Result<(), WatchError> {
     }
 
     Ok(())
-}
-
-/// The result text for the log, and the reason when there is one.
-fn result_text(outcome: &StopOutcome) -> (&'static str, Option<String>) {
-    match outcome {
-        StopOutcome::Stopped => ("success", None),
-        StopOutcome::NotAccepted => (
-            "failure",
-            Some("the service does not accept a stop command".to_string()),
-        ),
-        StopOutcome::NotStopped => (
-            "failure",
-            Some("the service did not stop in time".to_string()),
-        ),
-        StopOutcome::DependentsRunning { dependents } => (
-            "failure",
-            Some(format!(
-                "dependent services are running: {}",
-                dependents.join(", ")
-            )),
-        ),
-    }
 }
 
 fn write_log(
@@ -805,23 +783,6 @@ mod tests {
             retry.record_stop(start);
         }
         assert!(retry.has_given_up(start));
-    }
-
-    #[test]
-    fn should_describe_each_stop_outcome() {
-        assert_eq!(result_text(&StopOutcome::Stopped), ("success", None));
-        assert_eq!(result_text(&StopOutcome::NotAccepted).0, "failure");
-        assert_eq!(result_text(&StopOutcome::NotStopped).0, "failure");
-
-        let outcome = StopOutcome::DependentsRunning {
-            dependents: vec!["Fax".to_string(), "Spooler".to_string()],
-        };
-        let (result, error) = result_text(&outcome);
-        assert_eq!(result, "failure");
-        assert_eq!(
-            error.as_deref(),
-            Some("dependent services are running: Fax, Spooler")
-        );
     }
 
     // The tests below start real watch threads.
