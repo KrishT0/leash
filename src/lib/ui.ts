@@ -4,7 +4,7 @@
 
 /** A quiet action: a frosted pill. */
 export const GHOST =
-  "inline-flex items-center gap-2.5 rounded-island border border-border bg-shell px-5 py-2.5 text-[13px] font-medium text-text backdrop-blur-xl transition-[background,transform] duration-700 ease-spring hover:bg-border active:scale-[0.98] disabled:opacity-40";
+  "inline-flex items-center gap-2.5 rounded-island border border-border bg-control px-5 py-2.5 text-[13px] font-medium text-text transition-[background,transform] duration-700 ease-spring hover:bg-border active:scale-[0.98] disabled:opacity-40";
 
 /** A status tag: a tinted pill, small and tracked. */
 export const TAG_TONES = {

@@ -1,5 +1,6 @@
-// The icon rail, as a floating glass plate. Wide window: a column beside the
-// work area. Narrow window: a slim bar above it, as section 11 asks.
+// The icon rail, as a column. One vertical rule divides it from the work area.
+// It is not a plate: a plate around the rail made the window read as a frame
+// inside a frame.
 
 import type { Page } from "../lib/pages";
 import { PAGES, PAGE_TITLES } from "../lib/pages";
@@ -27,14 +28,14 @@ interface RailProps {
 
 export function Rail({ page, onPick, elevated, paused }: RailProps) {
   return (
-    <aside className="m-4 flex flex-col gap-6 rounded-rail border border-hair bg-shell p-4 backdrop-blur-xl max-[719px]:m-0 max-[719px]:flex-row max-[719px]:items-center max-[719px]:gap-2 max-[719px]:overflow-x-auto max-[719px]:p-2">
+    <aside className="flex flex-col gap-6 border-r border-hair pt-4 pr-5 pb-4 pl-2 max-[719px]:flex-row max-[719px]:items-center max-[719px]:gap-2 max-[719px]:overflow-x-auto max-[719px]:border-r-0 max-[719px]:border-b max-[719px]:py-2 max-[719px]:pr-2 max-[719px]:pl-2">
       {/* No glow here. Section 11 keeps the orb as the one bold element. */}
-      <div className="flex items-center gap-2.5 px-1 text-[17px] font-semibold tracking-[-0.02em] max-[719px]:hidden">
+      <div className="flex items-center gap-2.5 px-3 text-[17px] font-semibold tracking-[-0.02em] max-[719px]:hidden">
         <i aria-hidden="true" className="block size-2.5 rounded-island bg-accent" />
         Leash
       </div>
 
-      <nav className="grid gap-1 max-[719px]:grid-flow-col max-[719px]:gap-1">
+      <nav className="grid gap-0.5 max-[719px]:grid-flow-col max-[719px]:gap-1">
         {PAGES.map((item) => (
           <button
             key={item}
@@ -43,7 +44,7 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
             aria-label={PAGE_TITLES[item]}
             aria-current={page === item ? "page" : undefined}
             onClick={() => onPick(item)}
-            className="flex items-center gap-3 rounded-island px-3 py-2.5 text-left text-sm font-medium text-muted transition-[color,background,transform] duration-700 ease-spring hover:translate-x-0.5 hover:bg-border hover:text-text aria-[current=page]:border aria-[current=page]:border-hair aria-[current=page]:bg-border aria-[current=page]:text-text max-[719px]:px-3 max-[719px]:py-2 max-[719px]:whitespace-nowrap"
+            className="flex items-center gap-3 rounded-nav px-3 py-2.5 text-left text-sm font-medium text-muted transition-[color,background] duration-700 ease-spring hover:bg-control hover:text-text aria-[current=page]:bg-control aria-[current=page]:text-text max-[719px]:whitespace-nowrap"
           >
             <svg
               viewBox="0 0 24 24"
@@ -51,7 +52,7 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
               className="size-[18px] flex-none"
               fill="none"
               stroke="currentColor"
-              strokeWidth={1.6}
+              strokeWidth={1.4}
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -63,7 +64,7 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
       </nav>
 
       {/* The technical block that fills the bottom of the rail. */}
-      <div className="mt-auto grid gap-2.5 pt-6 font-mono text-[11px] leading-relaxed text-muted max-[719px]:hidden">
+      <div className="mt-auto grid gap-2.5 px-3 pt-6 font-mono text-[11px] leading-relaxed text-muted max-[719px]:hidden">
         <span className="flex items-center gap-2">
           <i
             aria-hidden="true"

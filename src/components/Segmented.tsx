@@ -24,7 +24,7 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="my-2.5 flex gap-1 rounded-island border border-hair bg-shell p-1"
+      className="my-2.5 flex gap-1 rounded-island border border-hair bg-control p-1"
     >
       {options.map((option) => (
         <button

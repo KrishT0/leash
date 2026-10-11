@@ -1,5 +1,6 @@
-// The page title and the Watching or Paused island, as section 11 describes the
-// top bar. An island, not a bar glued to the top: it floats.
+// The page title and the Watching or Paused island. The rule under this bar is
+// the only horizontal divider at the top of the work area, so nothing needs a
+// frame around it.
 
 import type { Page } from "../lib/pages";
 import { PAGE_TITLES } from "../lib/pages";
@@ -22,7 +23,7 @@ export function TopBar({ page, paused, onTogglePause }: TopBarProps) {
   const label = paused === null ? "Reading" : paused ? "Paused" : "Watching";
 
   return (
-    <header className="flex items-center justify-between gap-4">
+    <header className="flex items-center justify-between gap-4 border-b border-hair pb-5">
       <h1 className="m-0 text-3xl font-semibold tracking-[-0.03em]">{PAGE_TITLES[page]}</h1>
 
       <button
@@ -30,7 +31,7 @@ export function TopBar({ page, paused, onTogglePause }: TopBarProps) {
         aria-pressed={paused === true}
         disabled={paused === null}
         onClick={onTogglePause}
-        className="inline-flex items-center gap-2.5 rounded-island border border-hair bg-shell px-4 py-2 text-xs font-medium text-muted backdrop-blur-xl transition-[background,transform] duration-700 ease-spring hover:bg-border disabled:opacity-60"
+        className="inline-flex items-center gap-2.5 rounded-island border border-hair bg-control px-4 py-2 text-xs font-medium text-muted transition-[background,transform] duration-700 ease-spring hover:bg-border disabled:opacity-60"
       >
         <i aria-hidden="true" className={`block size-[7px] rounded-island ${dot} ${glow}`} />
         {label}

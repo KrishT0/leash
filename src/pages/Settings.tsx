@@ -2,7 +2,7 @@
 // notices, starting with Windows, starting minimized, and starting the watchdog.
 
 import { useState } from "react";
-import { Bezel } from "../components/Bezel";
+import { Card } from "../components/Card";
 import { Switch } from "../components/Switch";
 import { Tag } from "../components/Tag";
 import { setSettings } from "../lib/api";
@@ -37,7 +37,7 @@ export function Settings({ state, onChanged }: SettingsProps) {
 
   return (
     <section className="grid gap-4">
-      <Bezel coreClassName="gap-4">
+      <Card>
         <p className={`m-0 ${EYEBROW}`}>This machine</p>
 
         <div className="flex items-center justify-between gap-3">
@@ -57,9 +57,9 @@ export function Settings({ state, onChanged }: SettingsProps) {
           <span>Platform</span>
           <span className="text-muted">Windows 11 only</span>
         </div>
-      </Bezel>
+      </Card>
 
-      <Bezel coreClassName="gap-4">
+      <Card>
         <p className={`m-0 ${EYEBROW}`}>Preferences</p>
 
         <div>
@@ -86,7 +86,7 @@ export function Settings({ state, onChanged }: SettingsProps) {
             not write over that file until you fix it.
           </p>
         ) : null}
-      </Bezel>
+      </Card>
     </section>
   );
 }

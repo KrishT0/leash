@@ -3,7 +3,6 @@
 // back from acting on.
 
 import { useEffect, useState } from "react";
-import { Bezel } from "../components/Bezel";
 import { Tag } from "../components/Tag";
 import { getLog } from "../lib/api";
 import { clockTime, entryResult, entryText, entryTone } from "../lib/format";
@@ -38,39 +37,37 @@ export function Activity({ revision }: ActivityProps) {
   }, [revision]);
 
   return (
-    <section>
-      <Bezel coreClassName="gap-5">
-        <p className={`m-0 ${EYEBROW}`}>Latest events</p>
+    <section className="grid content-start gap-5">
+      <p className={`m-0 ${EYEBROW}`}>Latest events</p>
 
-        {entries === null ? (
-          <p className="m-0 text-[13px] text-muted">Reading the log.</p>
-        ) : entries.length === 0 ? (
-          <p className="m-0 text-[13px] text-muted">
-            Nothing has happened yet. Leash writes a line here every time a service on a leash
-            starts.
-          </p>
-        ) : (
-          <ul className="m-0 list-none p-0">
-            {entries.map((entry, index) => (
-              <li
-                key={`${entry.ts}-${entry.service}-${index}`}
-                className="flex items-center gap-3 border-t border-hair py-3.5 first:border-t-0 first:pt-0"
-              >
-                <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
-                <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
-                  {entryText(entry)}
-                  {entry.error ? (
-                    <span className="mt-1 block font-mono text-[11px] text-muted">
-                      {entry.error}
-                    </span>
-                  ) : null}
-                </span>
-                <Tag tone={entryTone(entry)}>{entryResult(entry)}</Tag>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Bezel>
+      {entries === null ? (
+        <p className="m-0 text-[13px] text-muted">Reading the log.</p>
+      ) : entries.length === 0 ? (
+        <p className="m-0 text-[13px] text-muted">
+          Nothing has happened yet. Leash writes a line here every time a service on a leash
+          starts.
+        </p>
+      ) : (
+        <ul className="m-0 list-none p-0">
+          {entries.map((entry, index) => (
+            <li
+              key={`${entry.ts}-${entry.service}-${index}`}
+              className="flex items-center gap-3 border-t border-hair py-3.5 first:border-t-0 first:pt-0"
+            >
+              <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
+              <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
+                {entryText(entry)}
+                {entry.error ? (
+                  <span className="mt-1 block font-mono text-[11px] text-muted">
+                    {entry.error}
+                  </span>
+                ) : null}
+              </span>
+              <Tag tone={entryTone(entry)}>{entryResult(entry)}</Tag>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

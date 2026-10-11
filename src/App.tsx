@@ -73,39 +73,35 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-full p-4 max-[719px]:p-0">
-      <div className="mx-auto grid max-h-fit min-h-[calc(100vh-2rem)] max-w-[1240px] grid-cols-[236px_minmax(0,1fr)] rounded-bezel border border-hair bg-shell p-2 max-[719px]:min-h-screen max-[719px]:grid-cols-1 max-[719px]:rounded-none max-[719px]:border-0 max-[719px]:p-0">
-        <div className="grid rounded-core bg-surface shadow-core">
-          <Rail
-            page={page}
-            onPick={setPage}
-            elevated={state?.elevated ?? null}
-            paused={state?.paused ?? null}
-          />
-        </div>
+    <div className="grid min-h-full grid-cols-[236px_minmax(0,1fr)] max-[719px]:grid-cols-1">
+      <Rail
+        page={page}
+        onPick={setPage}
+        elevated={state?.elevated ?? null}
+        paused={state?.paused ?? null}
+      />
 
-        <main className="grid content-start gap-6 rounded-core p-6 pt-8 max-[719px]:gap-4 max-[719px]:px-3.5 max-[719px]:py-4">
-          <TopBar
-            page={page}
-            paused={state ? state.paused : null}
-            onTogglePause={() => void togglePause()}
-          />
-          <Banner state={state} problem={problem} />
+      <main className="grid content-start gap-6 py-4 pr-8 pl-8 max-[719px]:gap-4 max-[719px]:pr-3.5 max-[719px]:pl-3.5">
+        <TopBar
+          page={page}
+          paused={state ? state.paused : null}
+          onTogglePause={() => void togglePause()}
+        />
+        <Banner state={state} problem={problem} />
 
-          {state ? (
-            <Page
-              page={page}
-              state={state}
-              caught={caught}
-              revision={revision}
-              onViewAll={() => setPage("services")}
-              onChanged={() => void refresh()}
-            />
-          ) : (
-            <p className="text-[13px] text-muted">Reading the services.</p>
-          )}
-        </main>
-      </div>
+        {state ? (
+          <Page
+            page={page}
+            state={state}
+            caught={caught}
+            revision={revision}
+            onViewAll={() => setPage("services")}
+            onChanged={() => void refresh()}
+          />
+        ) : (
+          <p className="text-[13px] text-muted">Reading the services.</p>
+        )}
+      </main>
     </div>
   );
 }

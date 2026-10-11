@@ -4,24 +4,26 @@
 /*
  * The tokens, in two moods.
  *
- * Dark is Ethereal Glass: a near-black substrate, layered light instead of
+ * Dark is Ethereal Glass: a near black substrate, layered light instead of
  * lines, and one violet accent. Light is Soft Structuralism from the same
- * design skill: white and silver, the same layering carried by soft diffuse
- * shadows instead of glass. Both follow the system preference, as section 11
- * asks.
+ * design skill: white and silver, the same grouping carried by soft diffuse
+ * shadows.
  *
- * Every value below becomes a utility: bg-bg, bg-surface, bg-shell,
- * border-border, text-text, text-muted, text-ok, text-warn, text-error,
- * text-accent, font-display, font-mono, the radii, the spring curve, and the
- * core shadow.
+ * There is one surface. A card is one layer, never a tray holding a plate, so
+ * the interface does not read as an app inside an app. Structure comes from
+ * three things only: the rule under the title, the rule beside the rail, and
+ * grouped surfaces.
  */
 @theme {
   --color-bg: #050505;
-  --color-surface: #0b0b0d;
-  /* The outer shell of a card, sitting under the surface plate. */
-  --color-shell: rgba(255, 255, 255, 0.035);
+  /* A card: barely lifted off the substrate. */
+  --color-surface: rgba(255, 255, 255, 0.025);
+  /* A control, or an item inside a card: one step above a card. */
+  --color-control: rgba(255, 255, 255, 0.05);
+  /* Opaque, for the dialog, which must not show the page through it. */
+  --color-panel: #0b0b0d;
   --color-border: rgba(255, 255, 255, 0.1);
-  /* The quieter hairline, for rules inside a plate. */
+  /* The quiet rule, for a divider inside a card. */
   --color-hair: rgba(255, 255, 255, 0.06);
   --color-text: #f4f5f7;
   --color-muted: #8a8f9a;
@@ -33,21 +35,18 @@
   --font-display: "Bricolage Grotesque", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 
-  /* Corners. The bezel is the outer shell, the core sits inside it. */
-  --radius-bezel: 2rem;
-  --radius-core: 1.625rem;
-  --radius-rail: 1.25rem;
-  --radius-island: 9999px;
-  --radius-card: 12px;
-  --radius-button: 8px;
+  /* Corners. */
+  --radius-card: 1.25rem;
+  --radius-item: 1rem;
+  --radius-panel: 1.5rem;
   --radius-nav: 10px;
-  --radius-pill: 99px;
+  --radius-island: 9999px;
 
   /* Motion. No linear, no ease-in-out, as the design skill asks. */
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* The plate: an inner highlight in the dark, a soft shadow in the light. */
-  --shadow-core: inset 0 1px 1px rgba(255, 255, 255, 0.07);
+  /* Dark separates a card by its hairline and its lift, not by a shadow. */
+  --shadow-card: none;
 
   /*
    * The orbit's motion. Section 11 allows motion here and nowhere else, and
@@ -115,7 +114,8 @@
   :root {
     --color-bg: #f2f3f5;
     --color-surface: #ffffff;
-    --color-shell: rgba(0, 0, 0, 0.025);
+    --color-control: rgba(0, 0, 0, 0.045);
+    --color-panel: #ffffff;
     --color-border: rgba(0, 0, 0, 0.09);
     --color-hair: rgba(0, 0, 0, 0.055);
     --color-text: #14171b;
@@ -124,7 +124,8 @@
     --color-warn: #b45309;
     --color-error: #dc2626;
     --color-accent: #7c3aed;
-    --shadow-core: 0 28px 60px -32px rgba(20, 23, 27, 0.22);
+    /* White cards need the shadow, because their hairline is faint. */
+    --shadow-card: 0 18px 40px -30px rgba(20, 23, 27, 0.35);
   }
 }
 

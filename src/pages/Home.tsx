@@ -3,7 +3,7 @@
 // On the right the orbit, then the last four lines of the log.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bezel } from "../components/Bezel";
+import { Card } from "../components/Card";
 import { Orbit, type Caught } from "../components/Orbit";
 import { ServiceCard } from "../components/ServiceCard";
 import { Tag } from "../components/Tag";
@@ -119,7 +119,7 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
 
   return (
     <div className="grid items-start gap-4 min-[1150px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-      <Bezel className="min-[1150px]:col-start-1" coreClassName="gap-6">
+      <Card className="min-[1150px]:col-start-1">
           <p className={`m-0 ${EYEBROW}`}>Caught today</p>
 
           <div className="-mt-2">
@@ -163,12 +163,9 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
               ))}
             </div>
           </div>
-        </Bezel>
+        </Card>
 
-      <Bezel
-        className="min-[1150px]:col-start-2 min-[1150px]:row-start-1"
-        coreClassName="gap-3"
-      >
+      <Card className="min-[1150px]:col-start-2 min-[1150px]:row-start-1">
         <Orbit
           services={state.monitored}
           caught={caught}
@@ -178,9 +175,9 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
         <p className="m-0 text-center font-mono text-[11px] leading-relaxed text-muted">
           The dot at the rim is the service Leash just caught.
         </p>
-      </Bezel>
+      </Card>
 
-      <Bezel className="min-[1150px]:col-start-1" coreClassName="gap-4">
+      <Card className="min-[1150px]:col-start-1">
         <div className="flex items-center justify-between gap-3">
             <p className={`m-0 ${EYEBROW}`}>Held back</p>
             {onLeash.length > 0 ? (
@@ -215,9 +212,9 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
               View all {onLeash.length}
             </button>
           ) : null}
-        </Bezel>
+        </Card>
 
-      <Bezel className="min-[1150px]:col-start-2" coreClassName="gap-4">
+      <Card className="min-[1150px]:col-start-2">
         <p className={`m-0 ${EYEBROW}`}>Caught, last four</p>
 
           <ul className="m-0 list-none p-0">
@@ -237,7 +234,7 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
               <li className="text-[13px] text-muted">Nothing has happened yet.</li>
             ) : null}
           </ul>
-        </Bezel>
+        </Card>
     </div>
   );
 }

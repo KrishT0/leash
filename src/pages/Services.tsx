@@ -3,7 +3,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AddSheet } from "../components/AddSheet";
-import { Bezel } from "../components/Bezel";
 import { FilterSheet } from "../components/FilterSheet";
 import { Segmented } from "../components/Segmented";
 import { ServiceRow } from "../components/ServiceRow";
@@ -63,52 +62,50 @@ export function Services({ onChanged }: ServicesProps) {
   const filterCount = activeFilters(filters);
 
   return (
-    <section>
-      <Bezel coreClassName="gap-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className={`m-0 ${EYEBROW}`}>Find services</p>
-          <span className="flex gap-2">
-            <button type="button" className={GHOST} onClick={() => setFiltering(true)}>
-              Filters{filterCount > 0 ? ` ${filterCount}` : ""}
-            </button>
-            <button type="button" className={GHOST} onClick={() => setAdding(true)}>
-              Add
-            </button>
-          </span>
+    <section className="grid content-start gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className={`m-0 ${EYEBROW}`}>Find services</p>
+        <span className="flex gap-2">
+          <button type="button" className={GHOST} onClick={() => setFiltering(true)}>
+            Filters{filterCount > 0 ? ` ${filterCount}` : ""}
+          </button>
+          <button type="button" className={GHOST} onClick={() => setAdding(true)}>
+            Add
+          </button>
+        </span>
+      </div>
+
+      <Segmented options={TABS} value={tab} onChange={setTab} label="View" />
+
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.currentTarget.value)}
+        placeholder="Search by name"
+        aria-label="Search services"
+        className="w-full rounded-island border border-hair bg-bg px-4 py-3 text-sm text-text placeholder:text-muted"
+      />
+
+      {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}
+
+      {rows === null ? (
+        <p className="m-0 text-[13px] text-muted">Reading the services.</p>
+      ) : rows.length === 0 ? (
+        <p className="m-0 text-[13px] text-muted">
+          No match. Try the internal name or reset the filters.
+        </p>
+      ) : (
+        <div>
+          {rows.map((service) => (
+            <ServiceRow
+              key={service.name}
+              service={service}
+              showReason={tab === "suggested"}
+              onOpen={() => setSelected(service.name)}
+            />
+          ))}
         </div>
-
-        <Segmented options={TABS} value={tab} onChange={setTab} label="View" />
-
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.currentTarget.value)}
-          placeholder="Search by name"
-          aria-label="Search services"
-          className="w-full rounded-island border border-hair bg-bg px-4 py-3 text-sm text-text placeholder:text-muted"
-        />
-
-        {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}
-
-        {rows === null ? (
-          <p className="m-0 text-[13px] text-muted">Reading the services.</p>
-        ) : rows.length === 0 ? (
-          <p className="m-0 text-[13px] text-muted">
-            No match. Try the internal name or reset the filters.
-          </p>
-        ) : (
-          <div>
-            {rows.map((service) => (
-              <ServiceRow
-                key={service.name}
-                service={service}
-                showReason={tab === "suggested"}
-                onOpen={() => setSelected(service.name)}
-              />
-            ))}
-          </div>
-        )}
-      </Bezel>
+      )}
 
       <FilterSheet
         open={filtering}

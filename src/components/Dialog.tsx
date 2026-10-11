@@ -1,5 +1,5 @@
-// The native dialog, as section 4 asks. The same double-bezel as a card, with a
-// heavy frosted scrim behind it and the close wiring every dialog needs.
+// The native dialog. A dialog is the one legitimate layer, so it floats above
+// the surface as a single card with a heavy frosted scrim behind it.
 
 import { useEffect, useRef, type ReactNode } from "react";
 
@@ -37,9 +37,9 @@ export function Dialog({ open, onClose, label, children }: DialogProps) {
       }}
       // Tailwind's reset drops the margin that centres a dialog, so it is set
       // again here. The height cap keeps a long sheet inside the window.
-      className="m-auto max-h-[calc(100vh-2rem)] w-[min(540px,calc(100vw-32px))] overflow-y-auto rounded-bezel border border-hair bg-shell p-[7px] text-text shadow-[0_50px_120px_-30px_rgba(0,0,0,0.7)] backdrop:bg-bg/75 backdrop:backdrop-blur-xl"
+      className="m-auto max-h-[calc(100vh-2rem)] w-[min(540px,calc(100vw-32px))] overflow-y-auto rounded-panel border border-border bg-panel text-text shadow-[0_50px_120px_-30px_rgba(0,0,0,0.72)] backdrop:bg-bg/75 backdrop:backdrop-blur-xl"
     >
-      {open ? <div className="rounded-core bg-surface p-7 shadow-core">{children}</div> : null}
+      {open ? <div className="p-7">{children}</div> : null}
     </dialog>
   );
 }

@@ -123,7 +123,7 @@ function MatchRow({ service, onAdd }: { service: ServiceView; onAdd: () => void 
       type="button"
       disabled={blocked || monitored}
       onClick={onAdd}
-      className="flex w-full cursor-pointer items-center justify-between gap-3 border-t border-hair px-0.5 py-3.5 text-left transition-colors duration-700 ease-spring hover:bg-shell disabled:cursor-default disabled:opacity-50"
+      className="flex w-full cursor-pointer items-center justify-between gap-3 border-t border-hair px-0.5 py-3.5 text-left transition-colors duration-700 ease-spring hover:bg-control disabled:cursor-default disabled:opacity-50"
     >
       <span className="min-w-0">
         <span className="block truncate text-[15px] font-medium">{service.display_name}</span>
