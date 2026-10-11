@@ -20,6 +20,8 @@ export default function App() {
   const [state, setState] = useState<Snapshot | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [caught, setCaught] = useState<Caught | null>(null);
+  /** Bumped on every read, so the log page knows to read the log again. */
+  const [revision, setRevision] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -27,6 +29,8 @@ export default function App() {
       setProblem(null);
     } catch (error) {
       setProblem(String(error));
+    } finally {
+      setRevision((count) => count + 1);
     }
   }, []);
 
@@ -85,6 +89,7 @@ export default function App() {
             page={page}
             state={state}
             caught={caught}
+            revision={revision}
             onViewAll={() => setPage("services")}
             onChanged={() => void refresh()}
           />
@@ -101,12 +106,14 @@ function Page({
   page,
   state,
   caught,
+  revision,
   onViewAll,
   onChanged,
 }: {
   page: Page;
   state: Snapshot;
   caught: Caught | null;
+  revision: number;
   onViewAll: () => void;
   onChanged: () => void;
 }) {
@@ -116,8 +123,8 @@ function Page({
     case "services":
       return <Services onChanged={onChanged} />;
     case "activity":
-      return <Activity />;
+      return <Activity revision={revision} />;
     case "settings":
-      return <Settings state={state} />;
+      return <Settings state={state} onChanged={onChanged} />;
   }
 }
