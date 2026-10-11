@@ -1,6 +1,6 @@
-// The page title and the Watching or Paused island. The rule under this bar is
-// the only horizontal divider at the top of the work area, so nothing needs a
-// frame around it.
+// The page title and the Watching or Paused island. No rule sits under this
+// bar: the title belongs to the same surface as the page, and the only vertical
+// rule in the window is the one beside the rail.
 
 import type { Page } from "../lib/pages";
 import { PAGE_TITLES } from "../lib/pages";
@@ -23,7 +23,7 @@ export function TopBar({ page, paused, onTogglePause }: TopBarProps) {
   const label = paused === null ? "Reading" : paused ? "Paused" : "Watching";
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-hair pb-4">
+    <header className="flex items-center justify-between gap-4 pb-1">
       <h1 className="m-0 text-2xl font-semibold tracking-[-0.03em]">{PAGE_TITLES[page]}</h1>
 
       <button
