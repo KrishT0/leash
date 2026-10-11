@@ -191,7 +191,8 @@ const clicker = `
 var wanted = location.hash.slice(1) || "home";
 var names = { home: "Home", services: "Services", activity: "Activity", settings: "Settings" };
 var withSheet = wanted.indexOf("-sheet") > 0;
-var label = names[wanted.replace("-sheet", "")];
+var withDot = wanted.indexOf("-dot") > 0;
+var label = names[wanted.replace("-sheet", "").replace("-dot", "")];
 if (label) {
   var tries = 0;
   var timer = setInterval(function () {
@@ -202,11 +203,20 @@ if (label) {
       if (withSheet) {
         setTimeout(function () {
           var wantedName = "${services[0].display_name}";
-          var row = [].slice.call(document.querySelectorAll("button")).filter(function (button) {
-            return button.textContent.indexOf(wantedName) >= 0;
+          var row = [].slice.call(document.querySelectorAll("button")).filter(function (element) {
+            return element.textContent.indexOf(wantedName) >= 0;
           })[0];
           if (row) row.click();
         }, 400);
+      }
+      if (withDot) {
+        // A dot is an SVG group, so it needs a real mouse event rather than
+        // Element.click(), which SVG elements do not have.
+        setTimeout(function () {
+          var dot = document.querySelector("svg g > title") &&
+            document.querySelector("svg g > title").parentNode;
+          if (dot) dot.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        }, 600);
       }
     }
     if (++tries > 40) clearInterval(timer);

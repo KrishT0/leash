@@ -6,7 +6,6 @@ import { AddSheet } from "../components/AddSheet";
 import { FilterSheet } from "../components/FilterSheet";
 import { Segmented } from "../components/Segmented";
 import { ServiceRow } from "../components/ServiceRow";
-import { ServiceSheet } from "../components/ServiceSheet";
 import { listServices } from "../lib/api";
 import {
   DEFAULT_FILTERS,
@@ -27,15 +26,16 @@ const TABS = (Object.keys(TAB_LABELS) as ServiceTab[]).map((value) => ({
 interface ServicesProps {
   /** Called after anything that changes the config, so the app catches up. */
   onChanged: () => void;
+  /** Opens the service sheet, which the app shell owns. */
+  onOpenService: (name: string) => void;
 }
 
-export function Services({ onChanged }: ServicesProps) {
+export function Services({ onChanged, onOpenService }: ServicesProps) {
   const [services, setServices] = useState<ServiceView[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [tab, setTab] = useState<ServiceTab>("suggested");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [selected, setSelected] = useState<string | null>(null);
   const [filtering, setFiltering] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -101,7 +101,7 @@ export function Services({ onChanged }: ServicesProps) {
               key={service.name}
               service={service}
               showReason={tab === "suggested"}
-              onOpen={() => setSelected(service.name)}
+              onOpen={() => onOpenService(service.name)}
             />
           ))}
         </div>
@@ -122,7 +122,6 @@ export function Services({ onChanged }: ServicesProps) {
         onAdded={changed}
       />
 
-      <ServiceSheet name={selected} onClose={() => setSelected(null)} onChanged={changed} />
     </section>
   );
 }

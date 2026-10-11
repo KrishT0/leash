@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Banner } from "./components/Banner";
 import type { Caught } from "./components/Orbit";
 import { Rail } from "./components/Rail";
+import { ServiceSheet } from "./components/ServiceSheet";
 import { TopBar } from "./components/TopBar";
 import { getState, setPaused } from "./lib/api";
 import { CAUGHT_HOLD_MS, REFRESH_EVENTS, SERVICE_CAUGHT, type Page } from "./lib/pages";
@@ -22,6 +23,8 @@ export default function App() {
   const [caught, setCaught] = useState<Caught | null>(null);
   /** Bumped on every read, so the log page knows to read the log again. */
   const [revision, setRevision] = useState(0);
+  /** The service whose sheet is open, or null. */
+  const [service, setService] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -73,7 +76,8 @@ export default function App() {
   }
 
   return (
-    <div className="grid min-h-full grid-cols-[216px_minmax(0,1fr)] max-[719px]:grid-cols-1">
+    <>
+      <div className="grid min-h-full grid-cols-[216px_minmax(0,1fr)] max-[719px]:grid-cols-1">
       <Rail
         page={page}
         onPick={setPage}
@@ -97,12 +101,20 @@ export default function App() {
             revision={revision}
             onViewAll={() => setPage("services")}
             onChanged={() => void refresh()}
+            onOpenService={setService}
           />
         ) : (
           <p className="text-[13px] text-muted">Reading the services.</p>
         )}
-      </main>
-    </div>
+        </main>
+      </div>
+
+      <ServiceSheet
+        name={service}
+        onClose={() => setService(null)}
+        onChanged={() => void refresh()}
+      />
+    </>
   );
 }
 
@@ -114,6 +126,7 @@ function Page({
   revision,
   onViewAll,
   onChanged,
+  onOpenService,
 }: {
   page: Page;
   state: Snapshot;
@@ -121,12 +134,20 @@ function Page({
   revision: number;
   onViewAll: () => void;
   onChanged: () => void;
+  onOpenService: (name: string) => void;
 }) {
   switch (page) {
     case "home":
-      return <Home state={state} caught={caught} onViewAll={onViewAll} />;
+      return (
+        <Home
+          state={state}
+          caught={caught}
+          onViewAll={onViewAll}
+          onOpenService={onOpenService}
+        />
+      );
     case "services":
-      return <Services onChanged={onChanged} />;
+      return <Services onChanged={onChanged} onOpenService={onOpenService} />;
     case "activity":
       return <Activity revision={revision} />;
     case "settings":

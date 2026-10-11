@@ -34,9 +34,11 @@ interface HomeProps {
   caught: Caught | null;
   /** Opens Services, for "view all". */
   onViewAll: () => void;
+  /** Opens the service sheet, when a dot on the orbit is clicked. */
+  onOpenService: (name: string) => void;
 }
 
-export function Home({ state, caught, onViewAll }: HomeProps) {
+export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
   const [log, setLog] = useState<Entry[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [fit, setFit] = useState(1);
@@ -125,6 +127,7 @@ export function Home({ state, caught, onViewAll }: HomeProps) {
           caught={caught}
           paused={state.paused}
           today={state.caught_today}
+          onPick={onOpenService}
         />
         <p className="mt-4 font-mono text-[12.5px] text-muted">{quiet}</p>
       </div>

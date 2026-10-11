@@ -21,9 +21,11 @@ interface OrbitProps {
   paused: boolean;
   /** Caught today, for the middle. */
   today: number;
+  /** Opens the service sheet for the name, when a dot is clicked. */
+  onPick?: (name: string) => void;
 }
 
-export function Orbit({ services, caught, paused, today }: OrbitProps) {
+export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
   const radius = dotRadius(services.length);
   const faintLines = services.length > 12 && services.length <= 24;
   const hideLines = services.length > 24;
@@ -187,7 +189,7 @@ export function Orbit({ services, caught, paused, today }: OrbitProps) {
               ref={(element) => {
                 dotRefs.current[index] = element;
               }}
-              className="cursor-pointer"
+              onClick={() => onPick?.(service.name)}
               style={{
                 transition: "fill 0.3s",
                 filter:
@@ -196,6 +198,14 @@ export function Orbit({ services, caught, paused, today }: OrbitProps) {
                     : "drop-shadow(0 0 1.2px var(--color-accent))",
               }}
             >
+              {/* The name the browser shows on hover. */}
+              <title>{service.display_name}</title>
+              {/*
+               * A dot is only a few pixels wide, so an unseen larger circle
+               * takes the pointer. A transparent fill still receives events;
+               * no fill does not.
+               */}
+              <circle r={Math.max(radius * 3, 3.2)} fill="transparent" className="cursor-pointer" />
               <circle
                 r={radius}
                 fill={service.name === caught?.name ? "var(--color-warn)" : "var(--color-accent)"}
