@@ -325,9 +325,14 @@ fn join_all(threads: &mut Vec<JoinHandle<()>>, quit: &scm::StopEvent) {
     }
 }
 
-/// One thread per service. Windows reports one change per watch, so the loop
-/// arms the watch again on every round.
+/// One thread per service. Windows reports one change per request, so the
+/// watch is armed again on every round.
 fn watch_loop(mut watched: Watched, name: String, policy: Policy, shared: Arc<Shared>) {
+    if let Err(error) = watched.arm() {
+        report(&shared, &name, &error.to_string());
+        return;
+    }
+
     loop {
         match watched.wait() {
             Ok(WatchState::Quit) => return,
@@ -336,6 +341,14 @@ fn watch_loop(mut watched: Watched, name: String, policy: Policy, shared: Arc<Sh
                 report(&shared, &name, &error.to_string());
                 return;
             }
+        }
+
+        // Arm again straight away, before the work below. Stopping a service
+        // can take seconds, and a service that comes back in that time must
+        // not be missed.
+        if let Err(error) = watched.arm() {
+            report(&shared, &name, &error.to_string());
+            return;
         }
 
         // A change can be a stop or a pending state. Only a running service

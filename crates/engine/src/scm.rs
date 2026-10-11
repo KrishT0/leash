@@ -11,7 +11,8 @@ use std::mem::size_of;
 use std::time::{Duration, Instant};
 use windows::Win32::Foundation::{
     CloseHandle, ERROR_ACCESS_DENIED, ERROR_DEPENDENT_SERVICES_RUNNING, ERROR_INSUFFICIENT_BUFFER,
-    ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST, HANDLE, WAIT_EVENT, WAIT_OBJECT_0, WIN32_ERROR,
+    ERROR_MORE_DATA, ERROR_SERVICE_DOES_NOT_EXIST, HANDLE, WAIT_EVENT, WAIT_IO_COMPLETION,
+    WAIT_OBJECT_0, WIN32_ERROR,
 };
 use windows::Win32::System::Services::{
     CloseServiceHandle, ControlService, ENUM_SERVICE_STATUS_PROCESSW, ENUM_SERVICE_STATUSW,
@@ -26,7 +27,9 @@ use windows::Win32::System::Services::{
     SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE, SERVICE_STATUS_PROCESS,
     SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED, SERVICE_SYSTEM_START, SERVICE_WIN32,
 };
-use windows::Win32::System::Threading::{CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects};
+use windows::Win32::System::Threading::{
+    CreateEventW, INFINITE, SetEvent, WaitForMultipleObjectsEx,
+};
 use windows::core::{Error, HRESULT, PCWSTR};
 
 /// What a service is doing now.
@@ -364,14 +367,18 @@ pub fn watch(name: &str, quit: &StopEvent) -> Result<Watched, ScmError> {
 }
 
 impl Watched {
-    /// Arm the watch again and wait for the next status change, or for the
-    /// caller to ask the watch to stop.
-    pub fn wait(&mut self) -> Result<WatchState, ScmError> {
-        // A notification is good for one change, so the watch is renewed on
-        // every round. Windows reads the buffer during the call and the
-        // callback only reads the context, so reusing one buffer is safe.
-        // SAFETY: the service handle is open, the buffer is alive and is not
-        // touched while the call is pending.
+    /// Arm the watch. Call this before [`Watched::wait`], and again as soon as
+    /// `wait` returns.
+    ///
+    /// A notification covers one change, and Windows only reports a change that
+    /// happens while a request is outstanding. Arming straight after a wake up
+    /// means a service that comes back while Leash is stopping it is still
+    /// seen.
+    pub fn arm(&mut self) -> Result<(), ScmError> {
+        // Windows reads the buffer during the call, and the callback only reads
+        // the context, so one buffer can serve every round.
+        // SAFETY: the service handle is open, the buffer is alive, and the
+        // previous callback has finished with it, because `wait` returned.
         let code = unsafe {
             NotifyServiceStatusChangeW(self.handle.0, SERVICE_NOTIFY_RUNNING, &*self.notify)
         };
@@ -382,18 +389,37 @@ impl Watched {
             ));
         }
 
-        let handles = [self.quit, self.event];
-        // SAFETY: both handles stay open for the life of this struct, and the
-        // wait does not touch any memory of ours.
-        let waited = unsafe { WaitForMultipleObjects(&handles, false, INFINITE) };
-        if waited == WAIT_OBJECT_0 {
-            return Ok(WatchState::Quit);
-        }
-        if waited == WAIT_EVENT(WAIT_OBJECT_0.0 + 1) {
-            return Ok(WatchState::Changed);
-        }
+        Ok(())
+    }
 
-        Err(ScmError::Wait { code: waited.0 })
+    /// Wait for the next status change, or for the caller to ask the watch to
+    /// stop. Call [`Watched::arm`] first.
+    pub fn wait(&mut self) -> Result<WatchState, ScmError> {
+        let handles = [self.quit, self.event];
+
+        loop {
+            // The wait has to be alertable. Windows delivers the callback as an
+            // asynchronous procedure call queued to this thread, and a thread
+            // only runs a queued call during an alertable wait. A plain
+            // WaitForMultipleObjects would never run the callback, so the event
+            // would never be signalled and the watch would wait for ever.
+            // SAFETY: both handles stay open for the life of this struct, and
+            // the wait does not touch any memory of ours.
+            let waited = unsafe { WaitForMultipleObjectsEx(&handles, false, INFINITE, true) };
+            if waited == WAIT_OBJECT_0 {
+                return Ok(WatchState::Quit);
+            }
+            if waited == WAIT_EVENT(WAIT_OBJECT_0.0 + 1) {
+                return Ok(WatchState::Changed);
+            }
+            // The queued callback ended the wait. It also signalled the event,
+            // so go straight back to the wait.
+            if waited == WAIT_IO_COMPLETION {
+                continue;
+            }
+
+            return Err(ScmError::Wait { code: waited.0 });
+        }
     }
 
     /// The current state of the watched service.
