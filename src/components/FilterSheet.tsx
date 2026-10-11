@@ -41,7 +41,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
 
   return (
     <Dialog open={open} onClose={onClose} label="Filter services">
-      <h2 className="m-0 text-[17px] font-semibold tracking-[-0.02em]">Filter services</h2>
+      <h2 className="m-0 text-[15px] font-semibold tracking-[-0.02em]">Filter services</h2>
 
       <Group label="Status">
         <Segmented
@@ -70,7 +70,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
         />
       </Group>
 
-      <label className="mt-1 flex items-center justify-between gap-3 border-t border-hair py-3.5">
+      <label className="mt-1 flex items-center justify-between gap-3 border-t border-hair py-3">
         <span>Show blocked services</span>
         <Switch
           checked={filters.blocked}
@@ -79,7 +79,7 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
         />
       </label>
 
-      <div className="mt-3.5 flex justify-end gap-2 border-t border-hair pt-4">
+      <div className="mt-3 flex justify-end gap-2 border-t border-hair pt-3.5">
         <button type="button" className={GHOST} onClick={() => onChange(DEFAULT_FILTERS)}>
           Reset
         </button>

@@ -28,9 +28,9 @@ interface RailProps {
 
 export function Rail({ page, onPick, elevated, paused }: RailProps) {
   return (
-    <aside className="flex flex-col gap-5 border-r border-hair pt-3.5 pr-4 pb-3.5 pl-2 max-[719px]:flex-row max-[719px]:items-center max-[719px]:gap-2 max-[719px]:overflow-x-auto max-[719px]:border-r-0 max-[719px]:border-b max-[719px]:py-2 max-[719px]:pr-2 max-[719px]:pl-2">
+    <aside className="flex flex-col gap-4 border-r border-hair pt-3 pr-3.5 pb-3 pl-2 max-[719px]:flex-row max-[719px]:items-center max-[719px]:gap-2 max-[719px]:overflow-x-auto max-[719px]:border-r-0 max-[719px]:border-b max-[719px]:py-2 max-[719px]:pr-2 max-[719px]:pl-2">
       {/* No glow here. Section 11 keeps the orb as the one bold element. */}
-      <div className="flex items-center gap-2.5 px-3 text-[16px] font-semibold tracking-[-0.02em] max-[719px]:hidden">
+      <div className="flex items-center gap-2 px-2.5 text-[15px] font-semibold tracking-[-0.02em] max-[719px]:hidden">
         <i aria-hidden="true" className="block size-2.5 rounded-island bg-accent" />
         Leash
       </div>
@@ -44,12 +44,12 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
             aria-label={PAGE_TITLES[item]}
             aria-current={page === item ? "page" : undefined}
             onClick={() => onPick(item)}
-            className="flex items-center gap-3 rounded-nav px-3 py-2 text-left text-[13px] font-medium text-muted transition-[color,background] duration-700 ease-spring hover:bg-control hover:text-text aria-[current=page]:bg-control aria-[current=page]:text-text max-[719px]:whitespace-nowrap"
+            className="flex items-center gap-2.5 rounded-nav px-2.5 py-1.5 text-left text-[12.5px] font-medium text-muted transition-[color,background] duration-700 ease-spring hover:bg-control hover:text-text aria-[current=page]:bg-control aria-[current=page]:text-text max-[719px]:whitespace-nowrap"
           >
             <svg
               viewBox="0 0 24 24"
               aria-hidden="true"
-              className="size-[17px] flex-none"
+              className="size-[16px] flex-none"
               fill="none"
               stroke="currentColor"
               strokeWidth={1.4}
@@ -64,11 +64,11 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
       </nav>
 
       {/* The technical block that fills the bottom of the rail. */}
-      <div className="mt-auto grid gap-2.5 px-3 pt-6 font-mono text-[11px] leading-relaxed text-muted max-[719px]:hidden">
+      <div className="mt-auto grid gap-2 px-2.5 pt-5 font-mono text-[10.5px] leading-relaxed text-muted max-[719px]:hidden">
         <span className="flex items-center gap-2">
           <i
             aria-hidden="true"
-            className={`block size-[7px] rounded-island ${elevated === false ? "bg-warn" : "bg-ok"}`}
+            className={`block size-[6.5px] rounded-island ${elevated === false ? "bg-warn" : "bg-ok"}`}
           />
           {elevated === null
             ? "Reading rights"
@@ -79,7 +79,7 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
         <span className="flex items-center gap-2">
           <i
             aria-hidden="true"
-            className={`block size-[7px] rounded-island ${paused ? "bg-warn" : "bg-ok"}`}
+            className={`block size-[6.5px] rounded-island ${paused ? "bg-warn" : "bg-ok"}`}
           />
           {paused ? "Stop actions off" : "Stop actions on"}
         </span>

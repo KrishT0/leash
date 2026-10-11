@@ -37,13 +37,13 @@ export function Activity({ revision }: ActivityProps) {
   }, [revision]);
 
   return (
-    <section className="grid content-start gap-5">
+    <section className="grid content-start gap-4">
       <p className={`m-0 ${EYEBROW}`}>Latest events</p>
 
       {entries === null ? (
-        <p className="m-0 text-[13px] text-muted">Reading the log.</p>
+        <p className="m-0 text-[12.5px] text-muted">Reading the log.</p>
       ) : entries.length === 0 ? (
-        <p className="m-0 text-[13px] text-muted">
+        <p className="m-0 text-[12.5px] text-muted">
           Nothing has happened yet. Leash writes a line here every time a service on a leash
           starts.
         </p>
@@ -52,13 +52,13 @@ export function Activity({ revision }: ActivityProps) {
           {entries.map((entry, index) => (
             <li
               key={`${entry.ts}-${entry.service}-${index}`}
-              className="flex items-center gap-3 border-t border-hair py-3.5 first:border-t-0 first:pt-0"
+              className="flex items-center gap-3 border-t border-hair py-3 first:border-t-0 first:pt-0"
             >
-              <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
-              <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
+              <span className="font-mono text-[10.5px] text-muted">{clockTime(entry.ts)}</span>
+              <span className="flex-1 text-[12.5px]" title={entry.error ?? undefined}>
                 {entryText(entry)}
                 {entry.error ? (
-                  <span className="mt-1 block font-mono text-[11px] text-muted">
+                  <span className="mt-1 block font-mono text-[10.5px] text-muted">
                     {entry.error}
                   </span>
                 ) : null}

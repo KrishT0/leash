@@ -16,7 +16,7 @@ interface CardProps {
 export function Card({ children, glow, className = "" }: CardProps) {
   return (
     <div
-      className={`grid content-start gap-3.5 rounded-card border border-hair bg-surface p-5 shadow-card ${className}`}
+      className={`grid content-start gap-3 rounded-card border border-hair bg-surface p-4 shadow-card ${className}`}
       style={
         glow
           ? {

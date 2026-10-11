@@ -173,7 +173,7 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
   }, []);
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[360px]">
+    <div className="relative mx-auto aspect-square w-full max-w-[330px]">
       <svg
         viewBox="0 0 100 100"
         aria-label="Services on a leash"
@@ -280,7 +280,7 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
       <div
         ref={tipRef}
         style={{ display: "none" }}
-        className="pointer-events-none absolute -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-island border border-border bg-panel px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-text shadow-[0_12px_34px_-14px_rgba(0,0,0,0.8)]"
+        className="pointer-events-none absolute -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-island border border-border bg-panel px-2 py-1 text-[10.5px] font-medium whitespace-nowrap text-text shadow-[0_12px_34px_-14px_rgba(0,0,0,0.8)]"
       />
 
       <div className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2">
@@ -307,11 +307,11 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
           <div>
             <div
               key={today}
-              className="animate-bump text-[min(10vw,42px)] leading-none font-bold tracking-[-0.05em]"
+              className="animate-bump text-[min(9vw,38px)] leading-none font-bold tracking-[-0.05em]"
             >
               {today}
             </div>
-            <div className="mt-1 text-[10.5px] text-muted">caught today</div>
+            <div className="mt-0.5 text-[10px] text-muted">caught today</div>
           </div>
         </div>
       </div>

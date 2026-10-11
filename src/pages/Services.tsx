@@ -62,7 +62,7 @@ export function Services({ onChanged, onOpenService }: ServicesProps) {
   const filterCount = activeFilters(filters);
 
   return (
-    <section className="grid content-start gap-4">
+    <section className="grid content-start gap-3.5">
       <div className="flex items-center justify-between gap-3">
         <p className={`m-0 ${EYEBROW}`}>Find services</p>
         <span className="flex gap-2">
@@ -83,15 +83,15 @@ export function Services({ onChanged, onOpenService }: ServicesProps) {
         onChange={(event) => setQuery(event.currentTarget.value)}
         placeholder="Search by name"
         aria-label="Search services"
-        className="w-full rounded-island border border-hair bg-bg px-3.5 py-2.5 text-[13px] text-text placeholder:text-muted"
+        className="w-full rounded-island border border-hair bg-bg px-3 py-2 text-[12.5px] text-text placeholder:text-muted"
       />
 
-      {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}
+      {problem ? <p className="m-0 text-[12.5px] text-error">{problem}</p> : null}
 
       {rows === null ? (
-        <p className="m-0 text-[13px] text-muted">Reading the services.</p>
+        <p className="m-0 text-[12.5px] text-muted">Reading the services.</p>
       ) : rows.length === 0 ? (
-        <p className="m-0 text-[13px] text-muted">
+        <p className="m-0 text-[12.5px] text-muted">
           No match. Try the internal name or reset the filters.
         </p>
       ) : (

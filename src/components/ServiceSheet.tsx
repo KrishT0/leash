@@ -83,7 +83,7 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
           <div>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="m-0 text-[22px] leading-tight font-semibold tracking-[-0.03em]">
+                <h2 className="m-0 text-[20px] leading-tight font-semibold tracking-[-0.03em]">
                   {service.display_name}
                 </h2>
                 <div className="mt-1 font-mono text-xs text-muted">{service.name}</div>
@@ -95,21 +95,21 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               </div>
             </div>
 
-            <dl className="my-3.5 grid grid-cols-[82px_1fr] gap-x-3 gap-y-1.5 border-t border-hair pt-4">
+            <dl className="my-3 grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5 border-t border-hair pt-4">
               <dt className="text-muted">Status</dt>
-              <dd className="m-0 font-mono text-[13px]">{statusWord(service)}</dd>
+              <dd className="m-0 font-mono text-[12.5px]">{statusWord(service)}</dd>
               <dt className="text-muted">Startup</dt>
-              <dd className="m-0 font-mono text-[13px]">{startupWord(service.startup)}</dd>
+              <dd className="m-0 font-mono text-[12.5px]">{startupWord(service.startup)}</dd>
               <dt className="text-muted">PID</dt>
-              <dd className="m-0 font-mono text-[13px]">{service.pid ?? "none"}</dd>
+              <dd className="m-0 font-mono text-[12.5px]">{service.pid ?? "none"}</dd>
             </dl>
 
             {service.description ? (
-              <p className="my-2 text-[13px] text-muted">{service.description}</p>
+              <p className="my-2 text-[12.5px] text-muted">{service.description}</p>
             ) : null}
 
             {service.suggested ? (
-              <p className="my-2 text-[13px] text-muted">
+              <p className="my-2 text-[12.5px] text-muted">
                 <Note>Why stop it:</Note> {service.suggested.reason}
                 <br />
                 <Note>If you stop it:</Note> {service.suggested.effect}
@@ -117,24 +117,24 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
             ) : null}
 
             {critical && service.dependents.length > 0 ? (
-              <p className="my-2 text-[13px] text-muted">
+              <p className="my-2 text-[12.5px] text-muted">
                 <Note>Depends on it:</Note> {service.dependents.join(", ")}
               </p>
             ) : null}
 
             {service.gave_up ? (
-              <p className="my-2 text-[13px] text-warn">
+              <p className="my-2 text-[12.5px] text-warn">
                 Leash stopped trying after {service.name} kept coming back.
               </p>
             ) : null}
 
             {blocked ? (
-              <p className="my-2 text-[13px] text-muted">
+              <p className="my-2 text-[12.5px] text-muted">
                 <Note>Leash cannot stop this service.</Note> {service.verdict_text}
               </p>
             ) : (
               <>
-                <label className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-3.5">
+                <label className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-3">
                   <span>Monitor this service</span>
                   <Switch
                     checked={monitored}
@@ -151,15 +151,15 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
                   disabled={!monitored}
                 />
 
-                <p className="my-2 text-[13px] text-muted">
+                <p className="my-2 text-[12.5px] text-muted">
                   Try it first: notify, then dry run, then stop.
                 </p>
               </>
             )}
 
-            {problem ? <p className="my-2 text-[13px] text-error">{problem}</p> : null}
+            {problem ? <p className="my-2 text-[12.5px] text-error">{problem}</p> : null}
 
-            <div className="mt-3.5 flex justify-end gap-2 border-t border-hair pt-4">
+            <div className="mt-3 flex justify-end gap-2 border-t border-hair pt-3.5">
               <button type="button" onClick={onClose} className={GHOST}>
                 Close
               </button>

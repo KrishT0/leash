@@ -24,7 +24,7 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="my-2.5 flex gap-1 rounded-island border border-hair bg-control p-1"
+      className="my-2 flex gap-1 rounded-island border border-hair bg-control p-1"
     >
       {options.map((option) => (
         <button
@@ -33,7 +33,7 @@ export function Segmented<T extends string>({
           disabled={disabled}
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
-          className={`flex-1 rounded-island p-2 text-[12.5px] font-medium transition-[background,color] duration-700 ease-spring disabled:cursor-default disabled:opacity-40 ${
+          className={`flex-1 rounded-island p-1.5 text-[12px] font-medium transition-[background,color] duration-700 ease-spring disabled:cursor-default disabled:opacity-40 ${
             option.value === value ? "bg-border text-text" : "text-muted hover:text-text"
           }`}
         >

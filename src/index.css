@@ -36,10 +36,10 @@
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 
   /* Corners. */
-  --radius-card: 1.25rem;
-  --radius-item: 1rem;
-  --radius-panel: 1.5rem;
-  --radius-nav: 10px;
+  --radius-card: 1.125rem;
+  --radius-item: 0.875rem;
+  --radius-panel: 1.25rem;
+  --radius-nav: 9px;
   --radius-island: 9999px;
 
   /* Motion. No linear, no ease-in-out, as the design skill asks. */
@@ -140,7 +140,7 @@
     margin: 0;
     background: var(--color-bg);
     color: var(--color-text);
-    font: 15px/1.55 var(--font-display);
+    font: 14px/1.5 var(--font-display);
   }
 
   /*

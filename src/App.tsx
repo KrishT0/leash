@@ -82,7 +82,7 @@ export default function App() {
        * rail is a column beside it, so it stays put. Below the narrow breakpoint
        * the rail sits on top instead, and the window scrolls as one page.
        */}
-      <div className="grid h-screen grid-cols-[216px_minmax(0,1fr)] overflow-hidden max-[719px]:h-auto max-[719px]:grid-cols-1 max-[719px]:overflow-visible">
+      <div className="grid h-screen grid-cols-[200px_minmax(0,1fr)] overflow-hidden max-[719px]:h-auto max-[719px]:grid-cols-1 max-[719px]:overflow-visible">
       <Rail
         page={page}
         onPick={setPage}
@@ -90,7 +90,7 @@ export default function App() {
         paused={state?.paused ?? null}
       />
 
-      <main className="grid min-h-0 content-start gap-5 overflow-y-auto py-3.5 pr-6 pl-6 max-[719px]:gap-4 max-[719px]:overflow-visible max-[719px]:px-3">
+      <main className="grid min-h-0 content-start gap-4 overflow-y-auto py-3 pr-5 pl-5 max-[719px]:gap-3.5 max-[719px]:overflow-visible max-[719px]:px-3">
         <TopBar
           page={page}
           paused={state ? state.paused : null}
@@ -109,7 +109,7 @@ export default function App() {
             onOpenService={setService}
           />
         ) : (
-          <p className="text-[13px] text-muted">Reading the services.</p>
+          <p className="text-[12.5px] text-muted">Reading the services.</p>
         )}
         </main>
       </div>

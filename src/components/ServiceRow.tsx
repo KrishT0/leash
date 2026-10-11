@@ -19,10 +19,10 @@ export function ServiceRow({ service, showReason, onOpen }: ServiceRowProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full cursor-pointer items-center justify-between gap-3 border-t border-hair px-0.5 py-3 text-left transition-colors duration-700 ease-spring hover:bg-control"
+      className="flex w-full cursor-pointer items-center justify-between gap-3 border-t border-hair px-0.5 py-2.5 text-left transition-colors duration-700 ease-spring hover:bg-control"
     >
       <span className="min-w-0">
-        <span className="block truncate text-[14.5px] font-medium">{service.display_name}</span>
+        <span className="block truncate text-[13.5px] font-medium">{service.display_name}</span>
         {suggested ? (
           <span className="mt-0.5 block max-w-[46ch] text-xs text-muted">{suggested.reason}</span>
         ) : (

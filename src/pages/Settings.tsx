@@ -36,12 +36,12 @@ export function Settings({ state, onChanged }: SettingsProps) {
   ];
 
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-3.5">
       <Card>
         <p className={`m-0 ${EYEBROW}`}>This machine</p>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2.5 text-[14px]">
+          <span className="flex items-center gap-2 text-[12.5px]">
             <i
               aria-hidden="true"
               className={`block size-2 rounded-island ${state.elevated ? "bg-ok" : "bg-error"}`}
@@ -53,7 +53,7 @@ export function Settings({ state, onChanged }: SettingsProps) {
           </Tag>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-hair pt-3.5 text-[14px]">
+        <div className="flex items-center justify-between gap-3 border-t border-hair pt-3 text-[12.5px]">
           <span>Platform</span>
           <span className="text-muted">Windows 11 only</span>
         </div>
@@ -66,7 +66,7 @@ export function Settings({ state, onChanged }: SettingsProps) {
           {switches.map(({ key, label }) => (
             <label
               key={key}
-              className="flex items-center justify-between gap-4 border-t border-hair py-3.5 text-[14px] first:border-t-0 first:pt-1"
+              className="flex items-center justify-between gap-4 border-t border-hair py-3 text-[12.5px] first:border-t-0 first:pt-1"
             >
               <span>{label}</span>
               <Switch
@@ -78,10 +78,10 @@ export function Settings({ state, onChanged }: SettingsProps) {
           ))}
         </div>
 
-        {problem ? <p className="m-0 text-[13px] text-error">{problem}</p> : null}
+        {problem ? <p className="m-0 text-[12.5px] text-error">{problem}</p> : null}
 
         {state.config_error ? (
-          <p className="m-0 text-[13px] text-warn">
+          <p className="m-0 text-[12.5px] text-warn">
             Leash is using its default settings, because the config file could not be read. It will
             not write over that file until you fix it.
           </p>

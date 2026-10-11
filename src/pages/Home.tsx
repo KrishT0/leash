@@ -27,7 +27,7 @@ const LOG_LIMIT = 200;
 const MAX_CARDS = 6;
 
 /** How wide a card is, with the gap, for counting what fits. */
-const CARD_STEP = 190;
+const CARD_STEP = 180;
 
 interface HomeProps {
   state: Snapshot;
@@ -129,7 +129,7 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
           today={state.caught_today}
           onPick={onOpenService}
         />
-        <p className="mt-4 font-mono text-[12.5px] text-muted">{quiet}</p>
+        <p className="mt-3.5 font-mono text-[12px] text-muted">{quiet}</p>
       </div>
 
       <Section title="Held back">
@@ -137,13 +137,13 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
       </Section>
 
       {onLeash.length === 0 ? (
-        <p className="m-0 text-[13px] text-muted">
+        <p className="m-0 text-[12.5px] text-muted">
           Nothing on a leash yet. Pick a service in Services.
         </p>
       ) : (
         <div
           ref={cards}
-          className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-2.5"
+          className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,170px),1fr))] gap-2.5"
         >
           {onLeash.slice(0, fit).map(({ service, lastCatch }) => (
             <ServiceCard
@@ -170,23 +170,23 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
         {feed.map((entry, index) => (
           <li
             key={`${entry.ts}-${entry.service}-${index}`}
-            className="flex items-center gap-3 border-t border-hair py-3 first:border-t-0 first:pt-0"
+            className="flex items-center gap-3 border-t border-hair py-2.5 first:border-t-0 first:pt-0"
           >
-            <span className="font-mono text-[11px] text-muted">{clockTime(entry.ts)}</span>
-            <span className="flex-1 text-[13px]" title={entry.error ?? undefined}>
+            <span className="font-mono text-[10.5px] text-muted">{clockTime(entry.ts)}</span>
+            <span className="flex-1 text-[12.5px]" title={entry.error ?? undefined}>
               {entryText(entry)}
             </span>
             <Tag tone={entryTone(entry)}>{entryResult(entry)}</Tag>
           </li>
         ))}
         {feed.length === 0 ? (
-          <li className="text-[13px] text-muted">Nothing has happened yet.</li>
+          <li className="text-[12.5px] text-muted">Nothing has happened yet.</li>
         ) : null}
       </ul>
 
       <Section title="Last 7 days" />
 
-      <div className="flex h-16 gap-2">
+      <div className="flex h-14 gap-2">
         {days.map((day, index) => (
           <i
             key={day.date}
@@ -200,7 +200,7 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
           />
         ))}
       </div>
-      <div className="mt-1.5 flex gap-2 font-mono text-[11px] text-muted">
+      <div className="mt-1 flex gap-2 font-mono text-[10.5px] text-muted">
         {days.map((day) => (
           <span key={day.date} className="flex-1 text-center">
             {weekdayLetter(day.date)}
@@ -214,7 +214,7 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
 /** A section heading, with anything that belongs on the same line. */
 function Section({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <h2 className={`mt-7 mb-2.5 flex items-center justify-between gap-3 ${EYEBROW}`}>
+    <h2 className={`mt-6 mb-2 flex items-center justify-between gap-3 ${EYEBROW}`}>
       <span>{title}</span>
       {children}
     </h2>

@@ -18,7 +18,7 @@ export function Switch({ checked, onChange, label, disabled }: SwitchProps) {
       checked={checked}
       disabled={disabled}
       onChange={(event) => onChange(event.currentTarget.checked)}
-      className="relative m-0 h-[26px] w-12 flex-none cursor-pointer appearance-none rounded-island border border-hair bg-border transition-colors duration-700 ease-spring after:absolute after:top-[3px] after:left-[3px] after:size-[18px] after:rounded-island after:bg-text after:transition-transform after:duration-700 after:ease-spring checked:bg-accent/55 checked:after:translate-x-[22px] disabled:cursor-default disabled:opacity-50"
+      className="relative m-0 h-[24px] w-11 flex-none cursor-pointer appearance-none rounded-island border border-hair bg-border transition-colors duration-700 ease-spring after:absolute after:top-[3px] after:left-[3px] after:size-[16px] after:rounded-island after:bg-text after:transition-transform after:duration-700 after:ease-spring checked:bg-accent/55 checked:after:translate-x-[20px] disabled:cursor-default disabled:opacity-50"
     />
   );
 }
