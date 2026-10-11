@@ -33,7 +33,7 @@ export function ServiceCard({ service, lastCatch, justCaught, now, onOpen }: Ser
     <button
       type="button"
       onClick={onOpen}
-      className={`flex h-full flex-col gap-1 rounded-item border p-3 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-control active:scale-[0.97] ${
+      className={`flex h-full min-w-0 flex-col gap-1 rounded-item border p-3 text-left transition-[transform,border-color,background] duration-700 ease-spring hover:bg-control active:scale-[0.97] ${
         justCaught
           ? "border-warn/40 bg-warn/8"
           : "border-hair bg-control"

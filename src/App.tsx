@@ -77,7 +77,12 @@ export default function App() {
 
   return (
     <>
-      <div className="grid min-h-full grid-cols-[216px_minmax(0,1fr)] max-[719px]:grid-cols-1">
+      {/*
+       * The shell is exactly one window tall, and only the work area scrolls. The
+       * rail is a column beside it, so it stays put. Below the narrow breakpoint
+       * the rail sits on top instead, and the window scrolls as one page.
+       */}
+      <div className="grid h-screen grid-cols-[216px_minmax(0,1fr)] overflow-hidden max-[719px]:h-auto max-[719px]:grid-cols-1 max-[719px]:overflow-visible">
       <Rail
         page={page}
         onPick={setPage}
@@ -85,7 +90,7 @@ export default function App() {
         paused={state?.paused ?? null}
       />
 
-      <main className="grid content-start gap-5 py-3.5 pr-6 pl-6 max-[719px]:gap-4 max-[719px]:px-3">
+      <main className="grid min-h-0 content-start gap-5 overflow-y-auto py-3.5 pr-6 pl-6 max-[719px]:gap-4 max-[719px]:overflow-visible max-[719px]:px-3">
         <TopBar
           page={page}
           paused={state ? state.paused : null}

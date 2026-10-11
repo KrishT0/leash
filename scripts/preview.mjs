@@ -193,7 +193,10 @@ var names = { home: "Home", services: "Services", activity: "Activity", settings
 var withSheet = wanted.indexOf("-sheet") > 0;
 var withDot = wanted.indexOf("-dot") > 0;
 var withTip = wanted.indexOf("-tip") > 0;
-var label = names[wanted.replace("-sheet", "").replace("-dot", "").replace("-tip", "")];
+var withScroll = wanted.indexOf("-scroll") > 0;
+var label = names[
+  wanted.replace("-sheet", "").replace("-dot", "").replace("-tip", "").replace("-scroll", "")
+];
 if (label) {
   var tries = 0;
   var timer = setInterval(function () {
@@ -228,6 +231,13 @@ if (label) {
             dot.dispatchEvent(new MouseEvent("click", { bubbles: true }));
           }
         }, 600);
+      }
+      if (withScroll) {
+        // Scroll the work area to the bottom, to show that the rail stays put.
+        setTimeout(function () {
+          var main = document.querySelector("main");
+          if (main) main.scrollTop = main.scrollHeight;
+        }, 700);
       }
     }
     if (++tries > 40) clearInterval(timer);

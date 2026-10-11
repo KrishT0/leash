@@ -27,7 +27,7 @@ const LOG_LIMIT = 200;
 const MAX_CARDS = 6;
 
 /** How wide a card is, with the gap, for counting what fits. */
-const CARD_STEP = 150;
+const CARD_STEP = 190;
 
 interface HomeProps {
   state: Snapshot;
@@ -143,7 +143,7 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
       ) : (
         <div
           ref={cards}
-          className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5"
+          className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-2.5"
         >
           {onLeash.slice(0, fit).map(({ service, lastCatch }) => (
             <ServiceCard
