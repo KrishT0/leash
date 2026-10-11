@@ -33,6 +33,8 @@ export type Startup = "automatic" | "manual" | "disabled" | "boot" | "system" | 
 export interface ServiceInfo {
   name: string;
   display_name: string;
+  /** What it does. Empty in the list, filled by getService. */
+  description: string;
   status: Status;
   startup: Startup;
   accepts_stop: boolean;
@@ -50,8 +52,12 @@ export interface Verdict {
 /** One service, with the safety check and the policy the user chose. */
 export interface ServiceView extends ServiceInfo {
   verdict: Verdict;
+  /** The verdict as a sentence. The engine owns the wording. */
+  verdict_text: string;
   policy: Policy | null;
   gave_up: boolean;
+  /** Only getService fills this in. */
+  dependents: string[];
 }
 
 /** A day and the catches on it. */

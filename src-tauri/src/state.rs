@@ -27,10 +27,15 @@ pub struct ServiceView {
     pub info: ServiceInfo,
     /// What the safety check says about it.
     pub verdict: Verdict,
+    /// The same verdict as a sentence, so the UI never words it itself.
+    pub verdict_text: String,
     /// The policy the user chose, when the service is monitored.
     pub policy: Option<Policy>,
     /// True when Leash used up its stops for this service.
     pub gave_up: bool,
+    /// The running services that depend on it. Only the single service read
+    /// fills this in, because it costs a call.
+    pub dependents: Vec<String>,
 }
 
 /// A day and its catch count, for the weekly bars.
@@ -200,32 +205,25 @@ impl AppState {
             }
         }
 
+        let gave_up = inner
+            .watchdog
+            .as_ref()
+            .map(Watchdog::gave_up)
+            .unwrap_or_default();
+
         let mut monitored = Vec::new();
         for service in &inner.config.services {
             match scm::query(&service.name) {
-                Ok(info) => {
-                    let verdict = self
-                        .lists
-                        .assess(&info.facts(), &inner.config.never_touch.names);
-                    monitored.push(ServiceView {
-                        info,
-                        verdict,
-                        policy: Some(service.policy),
-                        gave_up: false,
-                    });
-                }
+                Ok(info) => monitored.push(self.view(
+                    info,
+                    &inner.config.never_touch.names,
+                    Some(service.policy),
+                    &gave_up,
+                    Vec::new(),
+                )),
                 Err(error) => {
                     tracing::warn!(service = %service.name, %error, "cannot read a monitored service");
                 }
-            }
-        }
-
-        if let Some(watchdog) = &inner.watchdog {
-            let gave_up = watchdog.gave_up();
-            for view in &mut monitored {
-                view.gave_up = gave_up
-                    .iter()
-                    .any(|name| name.eq_ignore_ascii_case(&view.info.name));
             }
         }
 
@@ -293,23 +291,64 @@ impl AppState {
         Ok(infos
             .into_iter()
             .map(|info| {
-                let verdict = self.lists.assess(&info.facts(), &never_touch);
                 let policy = monitored
                     .iter()
                     .find(|entry| entry.name.eq_ignore_ascii_case(&info.name))
                     .map(|entry| entry.policy);
-                let gave_up = gave_up
-                    .iter()
-                    .any(|name| name.eq_ignore_ascii_case(&info.name));
 
-                ServiceView {
-                    info,
-                    verdict,
-                    policy,
-                    gave_up,
-                }
+                self.view(info, &never_touch, policy, &gave_up, Vec::new())
             })
             .collect())
+    }
+
+    /// One service, with everything the service sheet shows.
+    ///
+    /// This is the only path that reads the description and the dependents,
+    /// because each costs a call and only one service is on screen at a time.
+    pub fn service(&self, name: &str) -> Result<ServiceView, String> {
+        let info = scm::query(name).map_err(|error| error.to_string())?;
+        // A service that will not list its dependents still has a sheet.
+        let dependents = scm::dependents(name).unwrap_or_default();
+
+        let inner = lock(&self.inner);
+        let gave_up = inner
+            .watchdog
+            .as_ref()
+            .map(Watchdog::gave_up)
+            .unwrap_or_default();
+        let policy = inner.config.monitored(&info.name).map(|entry| entry.policy);
+
+        Ok(self.view(
+            info,
+            &inner.config.never_touch.names,
+            policy,
+            &gave_up,
+            dependents,
+        ))
+    }
+
+    /// One service as the UI reads it, with the safety check and the policy.
+    fn view(
+        &self,
+        info: ServiceInfo,
+        never_touch: &[String],
+        policy: Option<Policy>,
+        gave_up: &[String],
+        dependents: Vec<String>,
+    ) -> ServiceView {
+        let verdict = self.lists.assess(&info.facts(), never_touch);
+        let gave_up = gave_up
+            .iter()
+            .any(|name| name.eq_ignore_ascii_case(&info.name));
+
+        ServiceView {
+            info,
+            verdict_text: verdict.reason.text().to_string(),
+            verdict,
+            policy,
+            gave_up,
+            dependents,
+        }
     }
 
     /// The newest log lines.
@@ -705,6 +744,30 @@ mod tests {
         state.set_settings(settings.clone()).expect("settings");
 
         assert_eq!(state.snapshot().expect("snapshot").general, settings);
+    }
+
+    #[test]
+    #[ignore = "reads the real service manager"]
+    fn should_read_one_service_for_the_sheet() {
+        let state = state("sheet");
+
+        let view = state.service("Spooler").expect("service");
+        assert_eq!(view.info.name, "Spooler");
+        assert!(!view.info.description.is_empty());
+        assert_eq!(view.policy, None);
+        assert_eq!(view.verdict.level, Level::Normal);
+        // A normal service needs no explanation.
+        assert!(view.verdict_text.is_empty());
+
+        // A service the user protects gets the reason in words.
+        state.add_never_touch("Spooler").expect("never touch");
+        let view = state.service("Spooler").expect("service");
+        assert_eq!(view.verdict.reason, Reason::NeverTouch);
+        assert!(
+            view.verdict_text.contains("leave it alone"),
+            "{}",
+            view.verdict_text
+        );
     }
 
     #[test]

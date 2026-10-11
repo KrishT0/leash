@@ -30,6 +30,12 @@ pub fn list_services(state: State<'_, AppState>) -> Result<Vec<ServiceView>, Str
     state.services()
 }
 
+/// One service, with the description and the dependents the sheet shows.
+#[tauri::command(async)]
+pub fn get_service(state: State<'_, AppState>, name: String) -> Result<ServiceView, String> {
+    state.service(&name)
+}
+
 /// Put a service on the leash. It starts on the safest policy.
 #[tauri::command(async)]
 pub fn add_monitor(app: AppHandle, state: State<'_, AppState>, name: String) -> Result<(), String> {

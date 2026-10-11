@@ -19,6 +19,11 @@ export function listServices(): Promise<ServiceView[]> {
   return invoke<ServiceView[]>("list_services");
 }
 
+/** One service, with the description and the dependents the sheet shows. */
+export function getService(name: string): Promise<ServiceView> {
+  return invoke<ServiceView>("get_service", { name });
+}
+
 export function addMonitor(name: string): Promise<void> {
   return invoke("add_monitor", { name });
 }

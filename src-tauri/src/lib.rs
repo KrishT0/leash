@@ -63,6 +63,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
             commands::list_services,
+            commands::get_service,
             commands::add_monitor,
             commands::remove_monitor,
             commands::set_policy,

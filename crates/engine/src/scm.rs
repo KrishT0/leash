@@ -17,16 +17,16 @@ use windows::Win32::Foundation::{
 use windows::Win32::System::Services::{
     CloseServiceHandle, ControlService, ENUM_SERVICE_STATUS_PROCESSW, ENUM_SERVICE_STATUSW,
     EnumDependentServicesW, EnumServicesStatusExW, NotifyServiceStatusChangeW, OpenSCManagerW,
-    OpenServiceW, QUERY_SERVICE_CONFIGW, QueryServiceConfigW, QueryServiceStatusEx,
-    SC_ENUM_PROCESS_INFO, SC_HANDLE, SC_MANAGER_CONNECT, SC_MANAGER_ENUMERATE_SERVICE,
-    SC_STATUS_PROCESS_INFO, SERVICE_ACCEPT_STOP, SERVICE_ACTIVE, SERVICE_AUTO_START,
-    SERVICE_BOOT_START, SERVICE_CONTINUE_PENDING, SERVICE_CONTROL_STOP, SERVICE_DEMAND_START,
-    SERVICE_DISABLED, SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_NOTIFY_2W,
-    SERVICE_NOTIFY_RUNNING, SERVICE_PAUSE_PENDING, SERVICE_PAUSED, SERVICE_QUERY_CONFIG,
-    SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START, SERVICE_START_PENDING,
-    SERVICE_START_TYPE, SERVICE_STATE_ALL, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE,
-    SERVICE_STATUS_PROCESS, SERVICE_STOP, SERVICE_STOP_PENDING, SERVICE_STOPPED,
-    SERVICE_SYSTEM_START, SERVICE_WIN32, StartServiceW,
+    OpenServiceW, QUERY_SERVICE_CONFIGW, QueryServiceConfig2W, QueryServiceConfigW,
+    QueryServiceStatusEx, SC_ENUM_PROCESS_INFO, SC_HANDLE, SC_MANAGER_CONNECT,
+    SC_MANAGER_ENUMERATE_SERVICE, SC_STATUS_PROCESS_INFO, SERVICE_ACCEPT_STOP, SERVICE_ACTIVE,
+    SERVICE_AUTO_START, SERVICE_BOOT_START, SERVICE_CONFIG_DESCRIPTION, SERVICE_CONTINUE_PENDING,
+    SERVICE_CONTROL_STOP, SERVICE_DEMAND_START, SERVICE_DESCRIPTIONW, SERVICE_DISABLED,
+    SERVICE_DRIVER, SERVICE_ENUMERATE_DEPENDENTS, SERVICE_NOTIFY_2W, SERVICE_NOTIFY_RUNNING,
+    SERVICE_PAUSE_PENDING, SERVICE_PAUSED, SERVICE_QUERY_CONFIG, SERVICE_QUERY_STATUS,
+    SERVICE_RUNNING, SERVICE_START, SERVICE_START_PENDING, SERVICE_START_TYPE, SERVICE_STATE_ALL,
+    SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE, SERVICE_STATUS_PROCESS, SERVICE_STOP,
+    SERVICE_STOP_PENDING, SERVICE_STOPPED, SERVICE_SYSTEM_START, SERVICE_WIN32, StartServiceW,
 };
 use windows::Win32::System::Threading::{
     CreateEventW, INFINITE, SetEvent, WaitForMultipleObjectsEx,
@@ -66,6 +66,10 @@ pub struct ServiceInfo {
     pub name: String,
     /// Name Windows shows to the user.
     pub display_name: String,
+    /// What the service does. Windows keeps this apart from the rest of the
+    /// config, so it costs another call. The list leaves it empty, and the read
+    /// of one service fills it in.
+    pub description: String,
     pub status: Status,
     pub startup: Startup,
     /// The service accepts a stop command.
@@ -203,7 +207,14 @@ pub fn list_services() -> Result<Vec<ServiceInfo>, ScmError> {
                 third_party: false,
             });
 
-            services.push(info_from(name, &entry.ServiceStatusProcess, config));
+            services.push(info_from(
+                name,
+                &entry.ServiceStatusProcess,
+                config,
+                // The description costs one call per service and the list does not
+                // show it.
+                String::new(),
+            ));
         }
 
         if !more {
@@ -225,8 +236,9 @@ pub fn query(name: &str) -> Result<ServiceInfo, ScmError> {
     let handle = open_service(&manager, name, SERVICE_QUERY_STATUS | SERVICE_QUERY_CONFIG)?;
     let status = status_of(&handle, name)?;
     let config = config_of(&handle, name)?;
+    let description = description_of(&handle);
 
-    Ok(info_from(name.to_string(), &status, config))
+    Ok(info_from(name.to_string(), &status, config, description))
 }
 
 /// The services that depend on this one and are running now.
@@ -810,6 +822,52 @@ fn status_of(handle: &Handle, name: &str) -> Result<SERVICE_STATUS_PROCESS, ScmE
     Ok(status)
 }
 
+/// Read the description of a service.
+///
+/// Windows keeps the description apart from the rest of the config, and many
+/// services have none. A service that will not answer is not a reason to lose
+/// the rest of its details, so the answer is then empty.
+fn description_of(handle: &Handle) -> String {
+    let mut needed = 0u32;
+    // SAFETY: the handle is open. A null buffer only asks for the size.
+    let probe =
+        unsafe { QueryServiceConfig2W(handle.0, SERVICE_CONFIG_DESCRIPTION, None, &mut needed) };
+    let sized =
+        probe.is_ok() || probe.is_err_and(|error| is_win32(&error, ERROR_INSUFFICIENT_BUFFER));
+    if !sized || needed == 0 {
+        return String::new();
+    }
+
+    // A `u64` buffer stays aligned for the pointer inside the description.
+    let mut buffer = vec![0u64; (needed as usize).div_ceil(size_of::<u64>())];
+    // SAFETY: the buffer is at least `needed` bytes, is aligned, and outlives
+    // the call.
+    let bytes = unsafe {
+        std::slice::from_raw_parts_mut(buffer.as_mut_ptr().cast::<u8>(), needed as usize)
+    };
+    // SAFETY: the same call as above, now with a buffer that the first call sized.
+    let outcome = unsafe {
+        QueryServiceConfig2W(
+            handle.0,
+            SERVICE_CONFIG_DESCRIPTION,
+            Some(bytes),
+            &mut needed,
+        )
+    };
+    if outcome.is_err() {
+        return String::new();
+    }
+
+    // SAFETY: the call wrote a SERVICE_DESCRIPTIONW whose string points into the
+    // same live buffer.
+    let description = unsafe { &*buffer.as_ptr().cast::<SERVICE_DESCRIPTIONW>() };
+    if description.lpDescription.is_null() {
+        return String::new();
+    }
+    // SAFETY: the pointer points into the live buffer and is null terminated.
+    unsafe { description.lpDescription.to_string() }.unwrap_or_default()
+}
+
 fn config_of(handle: &Handle, name: &str) -> Result<ConfigSummary, ScmError> {
     let mut needed = 0u32;
     // SAFETY: the handle is open. A null buffer only asks for the size.
@@ -861,12 +919,18 @@ fn config_of(handle: &Handle, name: &str) -> Result<ConfigSummary, ScmError> {
     })
 }
 
-fn info_from(name: String, status: &SERVICE_STATUS_PROCESS, config: ConfigSummary) -> ServiceInfo {
+fn info_from(
+    name: String,
+    status: &SERVICE_STATUS_PROCESS,
+    config: ConfigSummary,
+    description: String,
+) -> ServiceInfo {
     let kinds = status.dwServiceType.0;
 
     ServiceInfo {
         display_name: config.display_name,
         name,
+        description,
         status: status_from(status.dwCurrentState),
         startup: config.startup,
         accepts_stop: accepts_stop(status),
@@ -1208,6 +1272,53 @@ mod tests {
     fn should_report_a_missing_service_on_a_stop() {
         let error = stop("LeashNoSuchService1234", Duration::from_secs(1)).unwrap_err();
         assert!(matches!(error, ScmError::NotFound { .. }), "{error:?}");
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
+    fn should_read_the_description_of_a_known_service() {
+        let info = query("Spooler").expect("query");
+
+        assert!(
+            !info.description.is_empty(),
+            "Spooler has no description here"
+        );
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
+    fn should_read_descriptions_without_falling_over() {
+        // A service with no description answers with a null pointer, which is
+        // the path that has to be handled. This walks real services to reach it.
+        let services = list_services().expect("list");
+        let mut read = 0;
+
+        for service in services.iter().take(40) {
+            match query(&service.name) {
+                Ok(info) => {
+                    assert_eq!(info.name, service.name);
+                    read += 1;
+                }
+                // Windows denies the read for some services without elevation.
+                Err(ScmError::AccessDenied { .. }) => {}
+                Err(error) => panic!("{}: {error:?}", service.name),
+            }
+        }
+
+        assert!(read > 0, "no service could be read");
+    }
+
+    #[test]
+    #[ignore = "calls the real service manager"]
+    fn should_leave_the_description_empty_in_the_list() {
+        // One call per service would be wasted on a list that does not show it.
+        let services = list_services().expect("list");
+
+        assert!(
+            services
+                .iter()
+                .all(|service| service.description.is_empty())
+        );
     }
 
     #[test]
