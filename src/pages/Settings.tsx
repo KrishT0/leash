@@ -66,10 +66,12 @@ export function Settings({ state, onChanged }: SettingsProps) {
           {switches.map(({ key, label }) => (
             <label
               key={key}
+              htmlFor={`pref-${key}`}
               className="flex items-center justify-between gap-4 border-t border-hair py-3 text-[12.5px] first:border-t-0 first:pt-1"
             >
               <span>{label}</span>
               <Switch
+                id={`pref-${key}`}
                 checked={state.general[key]}
                 onChange={(checked) => void change({ [key]: checked })}
                 label={label}

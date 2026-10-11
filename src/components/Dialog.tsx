@@ -27,6 +27,7 @@ export function Dialog({ open, onClose, label, children }: DialogProps) {
   }, [open]);
 
   return (
+    /* biome-ignore lint/a11y/useKeyWithClickEvents: a native dialog closes on Escape already. */
     <dialog
       ref={ref}
       aria-label={label}

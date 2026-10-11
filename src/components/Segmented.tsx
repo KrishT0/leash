@@ -21,10 +21,9 @@ export function Segmented<T extends string>({
   disabled,
 }: SegmentedProps<T>) {
   return (
-    <div
-      role="group"
+    <fieldset
       aria-label={label}
-      className="my-2 flex gap-1 rounded-island border border-hair bg-control p-1"
+      className="m-0 my-2 flex min-w-0 gap-1 rounded-island border border-hair border-solid bg-control p-1"
     >
       {options.map((option) => (
         <button
@@ -40,6 +39,6 @@ export function Segmented<T extends string>({
           {option.label}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }

@@ -141,9 +141,13 @@ export function ServiceSheet({ name, onClose, onChanged }: ServiceSheetProps) {
               </p>
             ) : (
               <>
-                <label className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-3">
+                <label
+                  htmlFor="monitor-service"
+                  className="mt-2 flex items-center justify-between gap-3 border-t border-hair py-3"
+                >
                   <span>Monitor this service</span>
                   <Switch
+                    id="monitor-service"
                     checked={monitored}
                     onChange={toggleMonitor}
                     label="Monitor this service"

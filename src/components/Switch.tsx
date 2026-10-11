@@ -6,14 +6,18 @@ interface SwitchProps {
   onChange: (checked: boolean) => void;
   /** Read out by a screen reader, because the visible label sits elsewhere. */
   label: string;
+  /** Lets the label that holds this switch point at it. */
+  id?: string;
   disabled?: boolean;
 }
 
-export function Switch({ checked, onChange, label, disabled }: SwitchProps) {
+export function Switch({ checked, onChange, label, id, disabled }: SwitchProps) {
   return (
     <input
       type="checkbox"
       role="switch"
+      id={id}
+      aria-checked={checked}
       aria-label={label}
       checked={checked}
       disabled={disabled}

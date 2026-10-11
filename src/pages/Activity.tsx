@@ -20,6 +20,7 @@ interface ActivityProps {
 export function Activity({ revision }: ActivityProps) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-read when the app reports a change.
   useEffect(() => {
     let live = true;
 
@@ -51,6 +52,7 @@ export function Activity({ revision }: ActivityProps) {
         <ul className="m-0 list-none p-0">
           {entries.map((entry, index) => (
             <li
+              /* biome-ignore lint/suspicious/noArrayIndexKey: two log lines can be identical to the second. */
               key={`${entry.ts}-${entry.service}-${index}`}
               className="flex items-center gap-3 border-t border-hair py-3 first:border-t-0 first:pt-0"
             >

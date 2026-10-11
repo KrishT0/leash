@@ -229,14 +229,29 @@ export function Orbit({ services, caught, paused, today, onPick }: OrbitProps) {
 
         <g>
           {services.map((service, index) => (
+            /* biome-ignore lint/a11y/useSemanticElements: SVG has no button element, so the role is how a dot says it is a control. */
             <g
               key={service.name}
               ref={(element) => {
                 dotRefs.current[index] = element;
               }}
+              // A dot is a control, so it answers the keyboard as well as the
+              // pointer. Section 11 names the service on hover; focus does the
+              // same, so the name is reachable without a mouse.
+              role="button"
+              tabIndex={0}
+              aria-label={service.display_name}
               onClick={() => onPick?.(service.name)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onPick?.(service.name);
+                }
+              }}
               onMouseEnter={() => enter(service.name)}
               onMouseLeave={leave}
+              onFocus={() => enter(service.name)}
+              onBlur={leave}
               className="cursor-pointer"
               style={{
                 transition: "fill 0.3s",

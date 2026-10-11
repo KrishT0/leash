@@ -226,7 +226,9 @@
     *,
     *::before,
     *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: the preference has to beat the element's own animation. */
       animation: none !important;
+      /* biome-ignore lint/complexity/noImportantStyles: the preference has to beat the element's own transition. */
       transition: none !important;
     }
   }

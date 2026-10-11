@@ -1,7 +1,7 @@
 // The filter sheet. Section 11: status, monitoring, startup, and a switch for
 // the blocked services, with the button saying how many rows are left.
 
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { DEFAULT_FILTERS, type Filters } from "../lib/services";
 import { EYEBROW, GHOST } from "../lib/ui";
 import { Cta } from "./Button";
@@ -70,9 +70,13 @@ export function FilterSheet({ open, filters, count, onChange, onClose }: FilterS
         />
       </Group>
 
-      <label className="mt-1 flex items-center justify-between gap-3 border-t border-hair py-3">
+      <label
+        htmlFor="filters-blocked"
+        className="mt-1 flex items-center justify-between gap-3 border-t border-hair py-3"
+      >
         <span>Show blocked services</span>
         <Switch
+          id="filters-blocked"
           checked={filters.blocked}
           onChange={(blocked) => set({ blocked })}
           label="Show blocked services"

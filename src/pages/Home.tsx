@@ -45,7 +45,9 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
   const cards = useRef<HTMLDivElement | null>(null);
 
   // The log holds what the cards and the feed need. It is read again whenever
-  // the engine says something happened.
+  // the engine says something happened, so the dependencies are triggers rather
+  // than values the effect reads.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-read when the engine reports a catch.
   useEffect(() => {
     let live = true;
 
@@ -169,6 +171,7 @@ export function Home({ state, caught, onViewAll, onOpenService }: HomeProps) {
       <ul className="m-0 list-none p-0">
         {feed.map((entry, index) => (
           <li
+            /* biome-ignore lint/suspicious/noArrayIndexKey: two log lines can be identical to the second. */
             key={`${entry.ts}-${entry.service}-${index}`}
             className="flex items-center gap-3 border-t border-hair py-2.5 first:border-t-0 first:pt-0"
           >
