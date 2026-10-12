@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- One page, so one entry. Update lastmod when the page itself changes, or when
+     a release fills in the version, the size and the hash. changefreq and
+     priority are left out on purpose: search engines ignore both. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://leash.pages.dev/</loc>
+        <lastmod>2026-10-12</lastmod>
+    </url>
+</urlset>

@@ -1,0 +1,5 @@
+# One page, so everything on it may be indexed.
+User-agent: *
+Allow: /
+
+Sitemap: https://leash.pages.dev/sitemap.xml

@@ -120,6 +120,8 @@ jobs:
           # released file, not to a local build: the installer carries its build
           # time, so two builds of one commit have different bytes.
           $onTag = ($env:GITHUB_REF_TYPE -eq "tag")
+          # The page and the structured data want the number without its v.
+          $version = if ($onTag) { $env:GITHUB_REF_NAME.TrimStart("v") } else { "not a tag" }
           foreach ($file in Get-ChildItem target/release/stable/*.exe) {
             $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
             $size = [math]::Round($file.Length / 1MB, 2)
@@ -133,7 +135,7 @@ jobs:
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| --- | --- |"
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| FILE SIZE | $size MiB |"
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| SHA-256 | ``$hash`` |"
-            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| VERSION | $env:GITHUB_REF_NAME |"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| VERSION | $version |"
             if ($onTag) {
               Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| DOWNLOAD URL | $url |"
             } else {
