@@ -238,5 +238,8 @@ pointer over a dot, and `#home-scroll` scrolls the work area to the bottom.
   No test covers them.
 - 106 public items in the engine carry no doc comment, so the `missing_docs` lint
   cannot be turned on yet. The lint table in `Cargo.toml` says so in place.
-- There is no licence file yet. The two fonts are the exception, and theirs sit
-  beside them in `public/fonts/`.
+
+## Licence
+
+MIT. The full text is in `LICENSE`. The two fonts in `public/fonts/` are the
+exception, and their licences sit beside them.
