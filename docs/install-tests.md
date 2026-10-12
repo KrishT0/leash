@@ -110,5 +110,16 @@ all went. The settings and the activity log stayed. The `/S` flag means the
 uninstall wizard was never shown, so its own question about deleting app data was
 never seen.
 
-What is still not run: the standard user case, and the logon start itself, which
-needs a log off and back on.
+The restart with rights, 12 October, after it had been broken and fixed. The button
+was asked for on an unelevated launch. The app left, and two seconds later the task
+started an elevated copy, which came back with its window. Checked afterwards: the
+task's status was Running with result 267009, the code for a task that is running;
+the new process held a higher integrity level than the shell reading it; the window
+titled Leash was visible rather than hidden; no console or `ping` process was left
+behind; and the activity log recorded `success` for stops, which it could not do
+without the rights. Before the fix the same button left the task never run, with
+result 267011, and put a `ping` window on screen.
+
+What is still not run: the standard user case, the logon start itself, which needs a
+log off and back on, and the restart case above with Leash started by the task at
+logon rather than by hand.
