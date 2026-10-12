@@ -53,6 +53,26 @@
   FileClose $0
 !macroend
 
+; Ends Leash before anything tries to replace or delete it.
+;
+; Both the installer and the uninstaller check for a running Leash, by product
+; name, and try to close it. Leash traps a window close and hides instead of
+; exiting, which is deliberate, so their close would never end it and the check
+; would keep failing.
+;
+; Ending the process is safe: the config is written as settings change, and the
+; activity log line by line, so nothing is waiting in memory to be lost.
+!macro LEASH_STOP_RUNNING
+  nsExec::ExecToLog 'taskkill /IM ${MAINBINARYNAME}.exe /F'
+  Pop $0
+  Sleep 500
+!macroend
+
+; Runs before the installer copies anything over the running program.
+!macro NSIS_HOOK_PREINSTALL
+  !insertmacro LEASH_STOP_RUNNING
+!macroend
+
 ; Runs after the program and the shortcuts are in place.
 !macro NSIS_HOOK_POSTINSTALL
   !insertmacro LEASH_WRITE_TASK_XML
@@ -69,6 +89,8 @@
 ; Runs first in the uninstall section, while the task still points at a program
 ; that exists.
 !macro NSIS_HOOK_PREUNINSTALL
+  !insertmacro LEASH_STOP_RUNNING
+
   DetailPrint "Removing the Leash scheduled task"
   nsExec::ExecToLog 'schtasks /Delete /TN "${LEASH_TASK_NAME}" /F'
   Pop $0
