@@ -52,6 +52,14 @@ if ($found.Count -eq 0) {
     exit 0
 }
 
+# What a readable path means depends on this shell. Two processes at the same level
+# can read each other, so an elevated shell can read an elevated Leash's path and
+# the reading says nothing at all about Leash.
+$shellIsElevated = ([Security.Principal.WindowsPrincipal] `
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Write-Host ("this shell is {0}" -f $(if ($shellIsElevated) { "elevated" } else { "NOT elevated" }))
+
 foreach ($process in $found) {
     Write-Host ("Leash is running, pid {0}, started {1}" -f $process.Id, $process.StartTime)
 
@@ -60,8 +68,11 @@ foreach ($process in $found) {
     if ([string]::IsNullOrEmpty($path)) {
         Write-Host " its path cannot be read, so it holds a higher integrity level than this shell"
         Write-Host " that is what administrator rights look like from outside"
+    } elseif ($shellIsElevated) {
+        Write-Host " its path reads back, but this shell is elevated, so that tells us nothing"
+        Write-Host " run this from a normal shell: an elevated Leash will not show its path there"
     } else {
-        Write-Host (" its path reads back, so it runs at the same level as this shell")
+        Write-Host " its path reads back and this shell is not elevated, so Leash has no rights"
     }
 
     $windows = [Windows]::WindowsOf([uint32]$process.Id)
@@ -75,7 +86,8 @@ foreach ($process in $found) {
     $visible = $windows | Where-Object { $_ -like "Leash | visible True" }
     $hidden = $windows | Where-Object { $_ -like "Leash | visible False" }
     if ($visible) {
-        Write-Host " the Leash window is VISIBLE, so this was not a quiet start"
+        Write-Host " the Leash window is VISIBLE, which is what a launch by hand looks like"
+        Write-Host " a logon start with start_minimized should show it hidden instead"
     } elseif ($hidden) {
         Write-Host " the Leash window is hidden, which is what a logon start with start_minimized looks like"
     } else {
