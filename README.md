@@ -167,10 +167,9 @@ rights, grey when the watchdog is off.
 `crates/engine` holds the rules and the Windows calls. It contains no Tauri
 code. The safety lists, the config file, the activity log, the service calls and
 the watchdog are separate modules, and the decision half of the watchdog makes
-no Windows calls at all. That is why most tests run anywhere: 80 of the 102
-engine tests need no service to watch. The other 22 talk to the real service
-manager, start a real watch thread, or want an elevated shell and the test
-service. They are marked ignored.
+no Windows calls at all. That is why most engine tests run on any machine. The
+rest talk to the real service manager, start a real watch thread, or want an
+elevated shell and the test service. They are marked ignored.
 
 `src-tauri` is the app: 14 commands, the state behind them, the tray, the
 single-instance lock, the notices, and the scheduled task. A command that
