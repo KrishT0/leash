@@ -121,9 +121,10 @@ starts Leash at logon with the highest available rights, so no prompt appears at
 logon, and it removes that task again on uninstall. It creates the Start menu
 shortcut, which is also what lets a Windows notification carry the app id.
 
-The installer has been built on this machine, but never run. The task it
-registers has been checked on its own with `scripts/task-test.ps1`: Task
-Scheduler stores it, and starting it brings up Leash with no prompt.
+The installer has been run on this machine. The hook inside it registered the
+task against `C:\Program Files\Leash\leash.exe`, and
+`scripts/install-check.ps1` is what proves that. The logon start itself has not
+been watched yet, because it needs a log off and back on.
 
 ## Where it keeps things
 
@@ -210,12 +211,17 @@ pointer over a dot, and `#home-scroll` scrolls the work area to the bottom.
 
 ## What is not finished
 
-- The installer is built but has never been run, so no installation has been
-  seen end to end. The hook that registers the task has run from the script
-  rather than from an install, and the two write the task in the same way.
-- The scheduled task itself is verified. Task Scheduler keeps the highest
-  available rights, a logon trigger for the installing account, no time limit,
-  one instance at a time, and the battery settings off.
+- One installation has been made, and its task hook verified. The hook that runs
+  during the install wrote the task against the installed program, which is the
+  part no script can reach from a build folder. The uninstaller's half of the
+  hook, which deletes the task, has not been run.
+- The logon start has not been watched yet. Everything in front of it checks
+  out, and the trigger fires at logon, but that step needs a log off.
+- The scheduled task is verified. Task Scheduler keeps the highest available
+  rights, a logon trigger for the installing account, no time limit, one
+  instance at a time, and the battery settings off. Starting it brings up Leash
+  with no prompt, and the process runs at a higher integrity level than a normal
+  program, which is what administrator rights look like from outside.
 - The tray, the single-instance lock, and close-to-tray have run by hand only.
   No test covers them.
 - Stop counts live in memory. Changing the watch list rebuilds the watchdog and
