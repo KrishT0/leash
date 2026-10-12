@@ -1,16 +1,14 @@
 //! What day it is, on this machine, in the time the person using it lives in.
 //!
-//! The rest of the engine counts catches against a date and names one log file
-//! per day. Windows keeps that date in local time, so a catch at half past
-//! midnight belongs to the day that has just started rather than the one that
-//! ended five and a half hours ago.
+//! The engine counts catches against a date and names one log file per day, and
+//! Windows keeps that date in local time. A catch at half past midnight belongs to
+//! the day that has just started, not the one that ended hours ago.
 //!
-//! The date is built from two things that are easy to test apart: a moment given
-//! in seconds since the epoch, and an offset from UTC in minutes. Windows
-//! supplies the offset. Every other platform, and every test, supplies its own.
+//! The date is built from a moment in seconds since the epoch and an offset from UTC
+//! in minutes. Windows supplies the offset, and every test supplies its own.
 //!
-//! This file, `scm.rs` and `elevation.rs` are the only places that call the
-//! Windows API.
+//! This file, `scm.rs` and `elevation.rs` are the only places that call the Windows
+//! API.
 
 #[cfg(windows)]
 use windows::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_INFORMATION};

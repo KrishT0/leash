@@ -3,12 +3,9 @@
 # Run this in an elevated shell:
 #     powershell -ExecutionPolicy Bypass -File scripts\elevated-test.ps1
 #
-# The script creates LeashTestSvc, points it at the SNMP trap binary, which is a
-# real service host that accepts a stop command, probes how that binary starts
-# and stops, runs the ignored tests, and removes the service again.
-#
-# It never starts, stops, or changes any other service. The service it creates
-# is separate from the SNMPTRAP service, even though both use the same binary.
+# It creates LeashTestSvc, points it at the SNMP trap binary, a real service host that
+# accepts a stop command, runs the ignored tests, and removes the service again. It
+# changes nothing else, and its service is separate from the real SNMPTRAP one.
 
 $ErrorActionPreference = 'Stop'
 

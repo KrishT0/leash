@@ -1,15 +1,12 @@
 //! The Tauri commands. Each one checks its input, calls the state, and returns.
 //!
-//! The commands stay thin, as section 5 asks: the rules live in the state and in
-//! the engine. Every input is checked in Rust, and Tauri checks the types before
-//! the body runs, so the UI is never trusted.
+//! The commands stay thin: the rules live in the state and in the engine. Input is
+//! checked in Rust, and Tauri checks the types before the body runs, so the interface
+//! is never trusted.
 //!
-//! Commands that read the machine or wait on it are marked `async`, which runs
-//! them off the main thread. A stop can wait for a service for up to a minute,
-//! and that must not freeze the window.
-//!
-//! A command that changes whether Leash is watching, paused, or allowed to stop
-//! a service refreshes the tray colour at the end.
+//! A command that reads the machine or waits on it is `async`, which keeps it off the
+//! main thread. A stop can wait a minute, and that must not freeze the window. A
+//! command that changes what Leash is doing refreshes the tray at the end.
 
 use crate::state::{AppState, ServiceView, Snapshot};
 use crate::task;

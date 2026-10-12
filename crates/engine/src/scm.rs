@@ -1,8 +1,8 @@
 //! Windows Service Control Manager calls.
 //!
-//! This file and `elevation.rs` are the only places that call the Windows API.
-//! Every call sits inside a safe function. Each `unsafe` block has a comment
-//! that says why the call cannot break memory safety.
+//! This file, `clock.rs` and `elevation.rs` are the only places that call the Windows
+//! API. Every call sits inside a safe function, and each `unsafe` block says why it
+//! cannot break memory safety.
 
 use crate::safety::ServiceFacts;
 use serde::{Deserialize, Serialize};

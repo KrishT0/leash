@@ -1,11 +1,11 @@
 //! The watchdog: what Leash does when a monitored service starts.
 //!
-//! Leash acts on changes only. A monitored service that is already running when
-//! the watchdog starts is left alone. Section 7 of the instructions reads that
-//! way, and it means Leash never stops something just for being open.
+//! A service that is already running when a watch is armed is given the policy once,
+//! at that moment. A service that starts later is given it every time it starts.
+//! Either way the user's instruction about that service is carried out.
 //!
-//! This half of the module is the decision. It has no Windows calls, so it is
-//! tested on any OS. The event loop that feeds it lives further down.
+//! This half of the module is the decision. It has no Windows calls, so it is tested
+//! on any OS. The event loop that feeds it lives further down.
 
 use crate::clock::today;
 use crate::config::{Monitored, Policy};

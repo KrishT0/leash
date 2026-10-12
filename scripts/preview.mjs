@@ -1,12 +1,8 @@
 // Build a stand-alone preview of the UI.
 //
-// The frontend talks to the engine through Tauri's invoke. In a plain browser
-// there is no engine, so this writes dist/preview.html: the real built bundle,
-// with the Tauri bridge stubbed and a set of realistic readings in its place.
-//
-// It exists so the pages can be looked at, and screenshotted, without starting
-// the desktop app. The data below is the same data the design mockups use, so a
-// screenshot of the app and a screenshot of a mockup can be compared directly.
+// The frontend talks to the engine through Tauri's invoke, and in a plain browser
+// there is no engine. So this writes dist/preview.html: the real built bundle, with
+// the bridge stubbed and realistic readings in its place.
 //
 //   node scripts/preview.mjs            then open dist/preview.html
 //   node scripts/preview.mjs#services   the hash clicks that page for you
