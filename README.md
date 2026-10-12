@@ -136,8 +136,8 @@ been watched yet, because it needs a log off and back on.
 | Path | What lives there |
 | --- | --- |
 | `%APPDATA%\Leash\config.toml` | your switches, your never-touch list, and the services you monitor |
-| `%LOCALAPPDATA%\Leash\logs` | one file a day, one JSON object a line, another part after 1 MB, kept for 30 days |
-| `%LOCALAPPDATA%\Leash\stats.json` | catches a day, which the seven-day bars on Home read |
+| `%LOCALAPPDATA%\Leash\logs` | one file a day, named for the local date, one JSON object a line, another part after 1 MB, kept for 30 days |
+| `%LOCALAPPDATA%\Leash\stats.json` | catches a day, keyed by the local date, which the seven-day bars on Home read |
 
 The config file is untrusted input. Any process can edit it, so every entry is
 validated when it is read.

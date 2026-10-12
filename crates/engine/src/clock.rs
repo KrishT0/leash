@@ -5,41 +5,72 @@
 //! midnight belongs to the day that has just started rather than the one that
 //! ended five and a half hours ago.
 //!
+//! The date is built from two things that are easy to test apart: a moment given
+//! in seconds since the epoch, and an offset from UTC in minutes. Windows
+//! supplies the offset. Every other platform, and every test, supplies its own.
+//!
 //! This file, `scm.rs` and `elevation.rs` are the only places that call the
-//! Windows API. Everywhere but Windows, the arithmetic below turns days since
-//! 1970 into a calendar date and back.
+//! Windows API.
 
 #[cfg(windows)]
-use windows::Win32::Foundation::SYSTEMTIME;
+use windows::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_INFORMATION};
+
+/// What `GetTimeZoneInformation` returns when the zone is in daylight saving.
+///
+/// The windows crate exports only `TIME_ZONE_ID_INVALID`, so the other two
+/// values are written out here. This one means the daylight bias applies.
+#[cfg(windows)]
+const TIME_ZONE_ID_DAYLIGHT: u32 = 2;
 
 /// Today as `YYYY-MM-DD`, in the local time of this machine.
-#[cfg(windows)]
 pub fn today() -> String {
-    // SAFETY: GetLocalTime reads the system clock and writes nothing that this
-    // program owns. It cannot fail.
-    let time = unsafe { windows::Win32::System::SystemInformation::GetLocalTime() };
-
-    from_systemtime(&time)
+    date_at(now_seconds(), offset_minutes())
 }
 
-/// Today as `YYYY-MM-DD`, taken from UTC.
+/// The date at a moment, shifted by an offset from UTC in minutes.
 ///
-/// No Windows clock to read, so the day is the UTC one. Correct, just not
-/// local, which is what tests and any other platform get.
-#[cfg(not(windows))]
-pub fn today() -> String {
-    let secs = std::time::SystemTime::now()
+/// India is +330, and half past seven in the evening UTC on 11 October is one in
+/// the morning on the 12th there, which is the case this exists for.
+pub fn date_at(seconds: i64, offset_minutes: i32) -> String {
+    let shifted = seconds + i64::from(offset_minutes) * 60;
+
+    format_date(days_of(shifted))
+}
+
+/// Now, in seconds since the epoch.
+pub fn now_seconds() -> i64 {
+    std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|since| since.as_secs() as i64)
-        .unwrap_or(0);
-
-    format_date(days_of(secs))
+        .unwrap_or(0)
 }
 
-/// The date part of a Windows clock reading.
+/// How far this machine is from UTC, in minutes, right now.
+///
+/// The daylight bias is added when the zone is in daylight saving, because the
+/// two together are what currently applies. Windows reports the bias the other
+/// way round, as UTC minus local, so the sign is flipped here.
 #[cfg(windows)]
-pub fn from_systemtime(time: &SYSTEMTIME) -> String {
-    format!("{:04}-{:02}-{:02}", time.wYear, time.wMonth, time.wDay)
+pub fn offset_minutes() -> i32 {
+    let mut info = TIME_ZONE_INFORMATION::default();
+
+    // SAFETY: GetTimeZoneInformation fills the struct it is given and reads
+    // nothing else. The pointer comes from a local that outlives the call.
+    let id = unsafe { GetTimeZoneInformation(&mut info) };
+
+    let bias = if id == TIME_ZONE_ID_DAYLIGHT {
+        info.Bias + info.DaylightBias
+    } else {
+        info.Bias
+    };
+
+    -bias
+}
+
+/// A machine with no time zone setting is treated as UTC.
+#[cfg(not(windows))]
+pub fn offset_minutes() -> i32 {
+    0
 }
 
 /// A date as `YYYY-MM-DD`.
@@ -86,6 +117,12 @@ pub fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
     era * 146_097 + day_of_era - 719_468
 }
 
+/// The moment a date and a time of day name, in seconds since the epoch.
+#[cfg(test)]
+fn seconds_at(year: i64, month: u32, day: u32, hour: i64, minute: i64) -> i64 {
+    days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,18 +143,45 @@ mod tests {
 
     #[test]
     fn should_round_trip_the_dates_of_three_years() {
-        let mut days = days_from_civil(2024, 1, 1);
+        let start = days_from_civil(2024, 1, 1);
         let end = days_from_civil(2027, 1, 1);
 
-        while days < end {
+        for days in start..end {
             let (year, month, day) = civil_from_days(days);
             assert_eq!(
                 days_from_civil(year, month, day),
                 days,
                 "{year}-{month}-{day}"
             );
-            days += 1;
         }
+    }
+
+    #[test]
+    fn should_place_a_late_evening_catch_on_the_next_day_in_india() {
+        // Half past seven in the evening UTC on 11 October is one in the morning
+        // on the 12th in India. This is the case that was wrong: the catch
+        // landed on the previous day's bar.
+        let moment = seconds_at(2026, 10, 11, 19, 30);
+
+        assert_eq!(date_at(moment, 330), "2026-10-12");
+    }
+
+    #[test]
+    fn should_leave_a_moment_where_it_is_at_no_offset() {
+        let moment = seconds_at(2026, 10, 11, 19, 30);
+
+        assert_eq!(date_at(moment, 0), "2026-10-11");
+    }
+
+    #[test]
+    fn should_shift_a_moment_backwards_behind_utc() {
+        // Five hours behind, so the same evening belongs to the same day, and
+        // the small hours belong to the one before.
+        assert_eq!(
+            date_at(seconds_at(2026, 10, 11, 19, 30), -300),
+            "2026-10-11"
+        );
+        assert_eq!(date_at(seconds_at(2026, 10, 12, 2, 0), -300), "2026-10-11");
     }
 
     #[test]
@@ -142,27 +206,23 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn should_read_the_local_time_from_windows() {
-        // The date alone cannot show the difference between local and UTC time
-        // except near midnight, so this checks the hour as well. On a machine
-        // set to UTC the two agree, which is correct.
-        // SAFETY: as in `today`: a reading of the system clock, nothing written.
-        let time = unsafe { windows::Win32::System::SystemInformation::GetLocalTime() };
+    fn should_read_an_offset_from_windows_that_matches_the_local_clock() {
+        use windows::Win32::System::SystemInformation::GetLocalTime;
 
-        let utc = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|since| since.as_secs() as i64)
-            .unwrap_or(0);
-        let utc_hour = (utc.rem_euclid(86_400)) / 3600;
+        // SAFETY: GetLocalTime reads the system clock and writes nothing this
+        // program owns. This is a second, independent reading of the same clock,
+        // which is what catches a sign error in the offset.
+        let local = unsafe { GetLocalTime() };
+        let offset = offset_minutes();
 
-        // Within a day of UTC, always, and the same date unless the local day
-        // really has moved on.
-        let local_days = days_from_civil(time.wYear as i64, time.wMonth as u32, time.wDay as u32);
-        assert!(
-            (local_days - days_of(utc)).abs() <= 1,
-            "{}",
-            from_systemtime(&time)
+        assert!((-14 * 60..=14 * 60).contains(&offset), "{offset} minutes");
+
+        let utc = now_seconds();
+        let shifted_hour = (utc + i64::from(offset) * 60).rem_euclid(86_400) / 3_600;
+        assert_eq!(
+            shifted_hour,
+            i64::from(local.wHour),
+            "the offset of {offset} minutes puts UTC on a different hour than the clock reads"
         );
-        assert!(time.wHour < 24 && utc_hour < 24);
     }
 }
