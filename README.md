@@ -51,9 +51,10 @@ returns at once is not hammered.
 | Normal | It may be monitored. |
 
 The lists that drive this are compiled into the executable.
-`crates/engine/data/deny.json` holds five names Leash never stops: RpcSs,
-DcomLaunch, EventLog, WinDefend and mpssvc. `crates/engine/data/sensitive.json`
-holds two that ask first: wuauserv and Audiosrv.
+`crates/engine/data/deny.json` holds nine names Leash never stops: RpcSs,
+DcomLaunch, EventLog, WinDefend, mpssvc, BFE, CryptSvc, SamSs and Schedule.
+`crates/engine/data/sensitive.json` holds two that ask first: wuauserv and
+Audiosrv.
 
 A service is blocked as well when it refuses stop commands, when it is a driver
 rather than a service, or when it is not a Win32 service at all. A service that

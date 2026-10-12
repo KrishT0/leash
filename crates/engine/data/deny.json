@@ -3,5 +3,9 @@
   "DcomLaunch",
   "EventLog",
   "WinDefend",
-  "mpssvc"
+  "mpssvc",
+  "BFE",
+  "CryptSvc",
+  "SamSs",
+  "Schedule"
 ]
