@@ -39,16 +39,17 @@ custom headers would then have to be attached by the Worker rather than by
 
 ## The files
 
-`index.html` is the landing page. `site.css` holds the styles for it and for the
-404 page, and the typefaces come from `fonts`, so nothing is loaded from Google.
-The page asks one other host for two things: the GSAP scripts from cdnjs that drive
-the motion.
+`index.html` is the landing page and `site.css` holds its styles. The typefaces
+come from `fonts`, so nothing on this site is loaded from Google. The page asks one
+other host for two things: the GSAP scripts from cdnjs that drive the motion.
 
 `404.html` is shown for any address that does not exist. Cloudflare serves the
 front page for an unknown address unless a top-level `404.html` is present, or
 `not_found_handling` says otherwise, so without this file a wrong address would
-answer 200 with the landing page. It carries `noindex`, it needs no script, and it
-uses the same classes as the landing page so the two cannot drift apart.
+answer 200 with the landing page. It is self-contained: its own smaller set of
+styles, no shared stylesheet, and the same three typefaces declared from `fonts`,
+so no page here loads a font from Google. It carries `noindex`, and it has one
+small script that restores the chosen theme.
 
 `fonts` holds three families, latin subset only, which is all the page needs, each
 with its licence text beside it:

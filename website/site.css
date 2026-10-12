@@ -1,6 +1,7 @@
-/* The site's styles. The landing page and the 404 page both use this file.
-   The page carried them in a <style> block until the 404 page needed the same
-   rules, and one copy of them is better than two that drift apart. */
+/* The landing page's styles, and only the landing page's. The 404 page keeps its
+   own smaller set, because it needs a header, a bar and one column of type. Both
+   pages declare the same three typefaces, pointing at the files in fonts/, so
+   neither of them asks Google for a font. */
 
 /* The three typefaces, served from the site itself, so the page asks no
    other host for anything. Rubik and JetBrains Mono are variable files,
