@@ -1,16 +1,13 @@
-# Reports what the Leash process is doing from the outside: whether it runs,
-# whether its window is really visible, and whether it holds a higher integrity
-# level than the shell that runs this script.
+# Reports what the Leash process is doing from the outside: whether it runs, whether
+# its window is really visible, and whether it holds a higher integrity level than the
+# shell that runs this script.
 #
 # powershell -ExecutionPolicy Bypass -File scripts\window-check.ps1
 #
-# Get-Process reports the wrong window for a Tauri app. The single-instance
-# plugin owns a window of its own, and that one is reported as the main window,
-# so a hidden app looks visible. This walks the real window list instead and
-# looks for the window titled "Leash".
-#
-# A hidden window still exists: it is listed, with visibility False. That is what
-# a logon start must look like.
+# Get-Process reports the wrong window for a Tauri app, because the single-instance
+# plugin owns a window of its own and that one is reported as the main window. This
+# walks the real window list instead. A hidden window is still listed, with visibility
+# False, which is what a logon start looks like.
 
 Add-Type -TypeDefinition @"
 using System;

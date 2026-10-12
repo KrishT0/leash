@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Python bytecode, from compiling a script to check it
+__pycache__/
+*.pyc
+
 # Local instructions and design mockup. Not shipped, not tracked.
 Agent Instructions/
 

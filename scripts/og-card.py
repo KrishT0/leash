@@ -1,22 +1,10 @@
-# Writes the landing page's social card, website/og.png, at exactly 1200 by 630.
+# Writes website/og.png, the card a shared link shows, at exactly 1200 by 630.
 #
 # python scripts/og-card.py
 #
-# Why a generator rather than an image:
-#
-# The card has to be exactly 1200 by 630, because that is the size link previews
-# ask for, and it has to use the same typefaces as the site, which are the files in
-# website/fonts. Rendering it in the browser gives both, and it means the card is
-# made from the same colours and family as the page instead of being approximated
-# by hand in another tool.
-#
-# The art direction follows the brandkit skill: one strong idea, a dark canvas,
-# generous negative space, mono labels, a measured frame and one accent. The accent
-# here is the site's silence, so the card stays monochrome like the page.
-#
-# The font files are embedded as data URIs so the card needs nothing but itself.
-# The template is written next to this script rather than into website/, because
-# only og.png is meant to ship.
+# The card is rendered from the site's own typefaces and colours rather than drawn
+# by hand, so it cannot drift from the page. It writes scripts/og-card.html with the
+# fonts embedded, then Chrome turns that into the image.
 
 import base64
 import pathlib

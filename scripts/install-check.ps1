@@ -1,16 +1,11 @@
 # Checks a Leash installation, after the installer has run.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\install-check.ps1
+# powershell -ExecutionPolicy Bypass -File scripts\install-check.ps1
 #
-# It reads what the installer left behind rather than trusting it: the program in
-# Program Files, the scheduled task, the Start menu shortcut and the uninstall
-# entry. A normal shell is enough, because this only reads.
-#
-# The task is the interesting part. Its command has to point at the installed
-# program for the installer's task hook to have run, and that hook is the one
-# piece no other check can reach.
-#
-# The logon start itself can only be seen by logging off and back on.
+# It reads what the installer left behind: the program in Program Files, the
+# scheduled task, the Start menu shortcut and the uninstall entry. A normal shell is
+# enough, because it only reads. The task's command has to point at the installed
+# program, which is the only thing only the installer's hook can reach.
 
 $ErrorActionPreference = "Continue"
 

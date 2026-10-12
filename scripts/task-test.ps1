@@ -1,21 +1,14 @@
-# Registers the Leash scheduled task from the XML in this repository, shows what
-# Task Scheduler made of it, and starts Leash through the task to prove that it
-# runs elevated without a prompt.
+# Registers the Leash task from src-tauri/installer/leash-task.xml, shows what Task
+# Scheduler made of it, and starts Leash through the task, which proves it runs with
+# administrator rights and without a prompt.
 #
-# Run it from an administrator shell. A task with the highest available rights
-# cannot be registered without the rights, so this cannot be tested from a
-# normal one.
+# Run it from an administrator shell, after building, because the task points at the
+# release build:
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\task-test.ps1
+# powershell -ExecutionPolicy Bypass -File scripts\task-test.ps1
 #
-# The task points at the release build, so build first:
-#
-#   pnpm tauri build
-#
-# The task is left in place at the end, which is the point of it: Leash will
-# start at the next logon. To remove it:
-#
-#   schtasks /Delete /TN Leash /F
+# The task is left behind, so Leash starts at the next logon. Remove it with
+# schtasks /Delete /TN Leash /F.
 
 $ErrorActionPreference = "Stop"
 
