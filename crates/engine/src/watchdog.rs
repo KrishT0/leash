@@ -377,6 +377,14 @@ fn watch_loop(mut watched: Watched, name: String, policy: Policy, shared: Arc<Sh
         return;
     }
 
+    // A service that is already running is given the policy once, at the moment
+    // the watch begins. Leash starts at logon, so most of the services it cares
+    // about are already up by then, and adding a service builds a watch like
+    // this one, so an addition behaves the same way.
+    if !act_when_running(&mut watched, &name, policy, &shared) {
+        return;
+    }
+
     loop {
         match watched.wait() {
             Ok(WatchState::Quit) => return,
@@ -395,21 +403,48 @@ fn watch_loop(mut watched: Watched, name: String, policy: Policy, shared: Arc<Sh
             return;
         }
 
-        // A change can be a stop or a pending state. Only a running service
-        // gets the policy.
-        match watched.status() {
-            Ok(Status::Running) => {}
-            Ok(_) => continue,
-            Err(error) => {
-                report(&shared, &name, &error.to_string());
-                return;
-            }
-        }
-
-        if let Err(error) = act(&name, policy, &shared) {
-            report(&shared, &name, &error.to_string());
+        if !act_when_running(&mut watched, &name, policy, &shared) {
+            return;
         }
     }
+}
+
+/// Whether a service should be given the policy at the moment its watch begins.
+///
+/// Only a running service is acted on. A stopped one has nothing to do, and one
+/// on its way down will be caught if it comes back up. This is the whole of the
+/// service manager's part in that decision, which is what lets the tests below
+/// stand in for it.
+fn acts_at_arm(status: Status) -> bool {
+    matches!(status, Status::Running)
+}
+
+/// Apply the policy if the service is running now.
+///
+/// False when the thread must stop, which happens when the service cannot be
+/// read at all.
+fn act_when_running(
+    watched: &mut Watched,
+    name: &str,
+    policy: Policy,
+    shared: &Arc<Shared>,
+) -> bool {
+    // A change can be a stop or a pending state, so the state is read rather
+    // than assumed.
+    match watched.status() {
+        Ok(status) if acts_at_arm(status) => {}
+        Ok(_) => return true,
+        Err(error) => {
+            report(shared, name, &error.to_string());
+            return false;
+        }
+    }
+
+    if let Err(error) = act(name, policy, shared) {
+        report(shared, name, &error.to_string());
+    }
+
+    true
 }
 
 /// Apply the policy to one service that is running now.
@@ -573,6 +608,45 @@ mod tests {
 
     fn now() -> Instant {
         Instant::now()
+    }
+
+    #[test]
+    fn should_give_the_policy_to_a_service_that_is_already_running() {
+        // The service manager's part at arm time is one status reading, so this
+        // stands in for it: running, under each policy.
+        assert!(acts_at_arm(Status::Running));
+        let verdict = verdict(Level::Normal);
+
+        let cases = [
+            (Policy::Notify, "notify"),
+            (Policy::DryRun, "dry run"),
+            (Policy::Stop, "stop"),
+        ];
+        for (policy, label) in cases {
+            let decision = decide(policy, false, true, &verdict, &RetryState::new(), now());
+            let what = match decision {
+                Decision::Notify => "notify",
+                Decision::DryRun => "dry run",
+                Decision::Stop { .. } => "stop",
+                other => panic!("the {label} policy decided {other:?}"),
+            };
+            assert_eq!(what, label, "the {label} policy");
+        }
+    }
+
+    #[test]
+    fn should_leave_a_service_that_is_not_running_alone() {
+        for status in [
+            Status::Stopped,
+            Status::StartPending,
+            Status::StopPending,
+            Status::Paused,
+            Status::PausePending,
+            Status::ContinuePending,
+            Status::Unknown,
+        ] {
+            assert!(!acts_at_arm(status), "{status:?}");
+        }
     }
 
     #[test]

@@ -21,20 +21,25 @@ It is not a process killer, and it does not disable anything.
 1. One watchdog thread holds a Windows status notification for each monitored
    service. It re-arms that notification before doing any work, because a stop
    can take seconds and a service that returns in that time must not be missed.
-2. Windows reports a change. Leash reads the service. Only a running service
+2. Each watch reads its service once when it begins. A service that is already
+   running is given the policy there and then. One that is stopped is left
+   alone. Leash starts at logon, so most of what it watches is already up by
+   then, and adding a service builds a watch like any other.
+3. Windows reports a change. Leash reads the service. Only a running service
    gets the policy. A stop, or a service on its way down, passes through.
-3. The safety check runs again, right before the action. Without the facts,
+4. The safety check runs again, right before the action. Without the facts,
    Leash does not act.
-4. The decision brings together the safety level, your policy, the pause switch,
+5. The decision brings together the safety level, your policy, the pause switch,
    the administrator token, and the stops already spent on this service inside
    ten minutes.
-5. Under the `stop` policy, Leash waits out a backoff, asks Windows to stop the
+6. Under the `stop` policy, Leash waits out a backoff, asks Windows to stop the
    service, and waits up to 30 seconds for it.
-6. Five stops inside ten minutes and Leash gives up on that service. The log
+7. Five stops inside ten minutes and Leash gives up on that service. The log
    records it, the interface shows it, and Leash stands aside until you press
    Try again.
 
-The backoff starts at one second and doubles, up to a minute, so a service that
+The first stop of a service is immediate. The backoff applies from the second
+stop inside the window: one second, two, four, up to a minute, so a service that
 returns at once is not hammered.
 
 ## Safety levels
@@ -73,8 +78,8 @@ writes a line to the log, and raises a Windows notification when notices are on.
 - It never stops a service from the deny list, and no setting unlocks one.
 - It never changes how a service starts. Windows still starts these services.
   Leash takes them down again.
-- It never stops a service that was already running when the watchdog started.
-  It acts on changes.
+- It never stops a service on a temporary state, such as one already on its way
+  down. It waits for the service to be running.
 - It never starts a service on its own. The Start now button in the interface is
   the only path to that.
 - It never passes a service name to a shell. Names are checked when the config
