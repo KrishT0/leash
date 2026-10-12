@@ -1,0 +1,117 @@
+name: Release
+
+# Builds the Windows installer and attaches it to a GitHub Release.
+#
+# The trigger is a version tag, so a release cannot come from an untagged commit.
+# Run it by hand from the Actions tab to check it builds without publishing
+# anything: the tag steps are skipped, and the installer is left as an artifact.
+#
+# A version bump has to touch all four files before the tag, or this workflow
+# stops at the version step. They are package.json, both Cargo.toml files, and
+# src-tauri/tauri.conf.json. Cargo.lock follows in the same commit.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Take the source
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+
+      - name: Install the frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the tag against every version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME.TrimStart("v")
+          $found = @()
+
+          $found += [pscustomobject]@{
+            File = "package.json"
+            Version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          }
+
+          foreach ($file in @("crates/engine/Cargo.toml", "src-tauri/Cargo.toml")) {
+            $content = Get-Content $file -Raw
+            if ($content -match '(?m)^version\s*=\s*"([^"]+)"') {
+              $found += [pscustomobject]@{ File = $file; Version = $Matches[1] }
+            } else {
+              $found += [pscustomobject]@{ File = $file; Version = "no version line" }
+            }
+          }
+
+          $found += [pscustomobject]@{
+            File = "src-tauri/tauri.conf.json"
+            Version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          }
+
+          $found | Format-Table -AutoSize
+
+          $wrong = $found | Where-Object { $_.Version -ne $tag }
+          if ($wrong) {
+            $detail = ($wrong | ForEach-Object { "$($_.File) says $($_.Version)" }) -join ", "
+            Write-Error "the tag v$tag does not match: $detail. Bump every version in one commit, then tag that commit."
+            exit 1
+          }
+
+          Write-Host "every version says $tag"
+
+      - name: Build the frontend and check the types
+        run: pnpm build
+
+      - name: Lint the interface
+        run: pnpm lint
+
+      - name: Test the interface
+        run: pnpm test
+
+      - name: Test the engine
+        run: cargo test --workspace
+
+      # This is also what fetches NSIS and WiX. A build machine needs a network
+      # that reaches github.com, which is the one thing a local build can lack.
+      - name: Build the installer
+        run: pnpm tauri build
+
+      - name: Keep the installer as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: leash-installer
+          path: target/release/bundle/nsis/*.exe
+
+      - name: Attach the installer to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/bundle/nsis/*.exe
+          generate_release_notes: true

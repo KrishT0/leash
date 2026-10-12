@@ -183,6 +183,14 @@ form a person can read.
 two fonts, Bricolage Grotesque and JetBrains Mono, are served from this
 repository along with their OFL licences.
 
+`website` is the public site, plain HTML with no build step. Cloudflare Pages
+serves it straight from the repository, and `website/README.md` holds the
+settings to enter in the dashboard.
+
+`.github/workflows/release.yml` builds the installer on a version tag and
+attaches it to a GitHub Release. It checks the four version fields against the
+tag first, so an installer cannot be published under the wrong number.
+
 ## Checks
 
 All of these pass:
@@ -238,6 +246,8 @@ pointer over a dot, and `#home-scroll` scrolls the work area to the bottom.
   No test covers them.
 - 106 public items in the engine carry no doc comment, so the `missing_docs` lint
   cannot be turned on yet. The lint table in `Cargo.toml` says so in place.
+- The release workflow has never run. It is written and it waits for the first
+  version tag.
 
 ## Licence
 
