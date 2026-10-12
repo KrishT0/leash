@@ -1,0 +1,59 @@
+<!--
+  The scheduled task Leash runs under, as the installer registers it.
+
+  Leash needs administrator rights to stop a service. A task with the highest
+  available rights starts the program at logon and shows no prompt, which a Run
+  registry key cannot do, and a manifest asking for administrator rights would
+  prompt at every launch.
+
+  The two placeholders stand for the installed program, which is
+  %ProgramFiles%\Leash\leash.exe unless another folder was chosen during the
+  install. The installer writes its own copy with the real paths, and
+  scripts/task-test.ps1 fills these in, so the task can be tried without
+  installing anything.
+
+  There is no XML declaration on purpose. Task Scheduler refuses a UTF-8 byte
+  order mark outright, and it refuses a declaration that does not match the
+  bytes, so a plain file with no declaration is the one form it accepts from
+  this repository as well as from the installer, which writes its copy as
+  UTF-16.
+
+  ExecutionTimeLimit is PT0S, meaning no limit. Left out, Task Scheduler stops
+  the program after 72 hours. MultipleInstancesPolicy is IgnoreNew for the same
+  reason the app holds a single-instance lock: two engines watching the same
+  services would fight.
+
+  The settings that are not listed here keep the Task Scheduler defaults, which
+  is what we want for idleness and wake behaviour. The battery settings are
+  listed because their defaults would stop the task on a laptop.
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Runs Leash at logon with the rights it needs to stop services.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>__LEASH_EXE__</Command>
+      <WorkingDirectory>__LEASH_DIR__</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>

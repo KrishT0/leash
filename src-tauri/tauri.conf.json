@@ -16,7 +16,8 @@
         "width": 900,
         "height": 640,
         "minWidth": 720,
-        "minHeight": 560
+        "minHeight": 560,
+        "visible": false
       }
     ],
     "security": {
@@ -36,7 +37,8 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "perMachine"
+        "installMode": "perMachine",
+        "installerHooks": "installer/hooks.nsh"
       }
     }
   }

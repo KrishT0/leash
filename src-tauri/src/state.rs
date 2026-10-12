@@ -13,6 +13,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::{Mutex, MutexGuard};
 
+use crate::task;
+
 /// Longest log the UI may ask for in one call.
 const MAX_LOG_LIMIT: usize = 1_000;
 
@@ -258,6 +260,14 @@ impl AppState {
         lock(&self.inner).config.general.notifications
     }
 
+    /// True when the window should stay out of the way until the tray is used.
+    ///
+    /// The scheduled task starts Leash at logon, and a window in the middle of
+    /// the screen each morning would be the wrong greeting.
+    pub fn start_minimized(&self) -> bool {
+        lock(&self.inner).config.general.start_minimized
+    }
+
     /// The three facts the tray colour needs. This reads nothing from Windows
     /// and no files, so the tray can ask for it whenever it likes.
     pub fn tray_flags(&self) -> TrayFlags {
@@ -451,18 +461,34 @@ impl AppState {
 
     /// Change the settings.
     pub fn set_settings(&self, settings: General) -> Result<(), String> {
-        let mut inner = lock(&self.inner);
-        let mut config = inner.config.clone();
-        config.general = settings;
-        self.store(&mut inner, config)?;
+        // Whether the switch that starts Leash with Windows moved. The task
+        // itself is touched after the lock is released.
+        let with_windows = {
+            let mut inner = lock(&self.inner);
+            let before = inner.config.general.start_with_windows;
 
-        if let Some(watchdog) = &inner.watchdog {
-            watchdog.set_paused(inner.config.general.paused);
-        }
+            let mut config = inner.config.clone();
+            config.general = settings;
+            self.store(&mut inner, config)?;
 
-        // Turning the watchdog on or off takes effect now.
-        if inner.config.general.start_watchdog != inner.watchdog.is_some() {
-            self.restart_watchdog(&mut inner)?;
+            if let Some(watchdog) = &inner.watchdog {
+                watchdog.set_paused(inner.config.general.paused);
+            }
+
+            // Turning the watchdog on or off takes effect now.
+            if inner.config.general.start_watchdog != inner.watchdog.is_some() {
+                self.restart_watchdog(&mut inner)?;
+            }
+
+            let after = inner.config.general.start_with_windows;
+            (after != before).then_some(after)
+        };
+
+        // Starting with Windows is the scheduled task, which the installer
+        // registered. The switch only enables or disables it, and Windows takes
+        // a moment to answer, so this runs outside the lock.
+        if let Some(enabled) = with_windows {
+            task::set_start_with_windows(enabled)?;
         }
 
         Ok(())

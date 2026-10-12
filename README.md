@@ -97,9 +97,14 @@ Building needs Rust, Node and pnpm.
     pnpm install
     pnpm tauri dev
 
-The window opens on Home. The left rail tells you whether the app holds
-administrator rights, and that is the first thing to look at. Without them,
-stops will be refused.
+Leash starts without a window. The same program is what the scheduled task
+starts at logon, and Start minimized to tray is on by default, so look for the
+tray icon and then Open. The left rail tells you whether the app holds
+administrator rights, which is the first thing to check. Without them, stops are
+refused.
+
+To have the window appear at once, turn off Start minimized to tray in Settings,
+or set `start_minimized = false` in the config file.
 
 To test real stops, run the same command from an elevated PowerShell.
 
@@ -110,10 +115,16 @@ To test real stops, run the same command from an elevated PowerShell.
 That writes an NSIS installer for one machine under
 `src-tauri/target/release/bundle/nsis/`.
 
-The step has not run on this machine. The NSIS download times out on the network
-here, so no installer exists yet. Two things wait on it: a scheduled task that
-starts Leash elevated at logon, and Windows notifications, which may need the
-Start menu shortcut an installer creates.
+The installer now does three things beyond copying the program. It asks for
+administrator rights once, at install time. It registers the scheduled task that
+starts Leash at logon with the highest available rights, so no prompt appears at
+logon, and it removes that task again on uninstall. It creates the Start menu
+shortcut, which is also what lets a Windows notification carry the app id.
+
+The installer has been built on this machine, but never run, so the task it
+registers has not been seen in Task Scheduler.
+`scripts/task-test.ps1` checks the same task without installing anything, which
+is the quicker way to find out whether Windows accepts it.
 
 ## Where it keeps things
 
@@ -156,8 +167,11 @@ manager, start a real watch thread, or want an elevated shell and the test
 service. They are marked ignored.
 
 `src-tauri` is the app: 14 commands, the state behind them, the tray, the
-single-instance lock, and the notices. A command that touches the machine is
-asynchronous, because waiting on Windows must not freeze the window.
+single-instance lock, the notices, and the scheduled task. A command that
+touches the machine is asynchronous, because waiting on Windows must not freeze
+the window. `installer/hooks.nsh` is what the installer runs to register the
+task and to remove it, and `installer/leash-task.xml` holds the same task in a
+form a person can read.
 
 `src` is the interface, in React 19, Tailwind 4, Vite 8 and TypeScript 6. The
 two fonts, Bricolage Grotesque and JetBrains Mono, are served from this
@@ -175,16 +189,18 @@ All of these pass:
     npx tsc --noEmit
     npx vite build
 
-The counts are 102 tests in the engine, 21 in the app crate and 47 over the
+The counts are 102 tests in the engine, 23 in the app crate and 47 over the
 interface and the shared code. Of those, the 22 engine tests and 9 app tests
 that need a real machine are ignored.
 
 A commit cannot carry a new lint finding. lefthook runs Biome over the staged
 frontend files first, and a warning fails the hook as well as an error.
 
-Two scripts reach the parts a unit test cannot. `scripts/elevated-test.ps1`
+Three scripts reach the parts a unit test cannot. `scripts/elevated-test.ps1`
 builds a throwaway service from a Windows binary, stops it five times, and
-checks that Leash gives up at the cap. Run it from an administrator shell.
+checks that Leash gives up at the cap. `scripts/task-test.ps1` registers the
+scheduled task, prints what Task Scheduler stored, and starts Leash through it,
+which is how the no-prompt start is checked. Both want an administrator shell.
 Nothing in this repository stops a service that Windows needs.
 
 `scripts/preview.mjs` puts the built interface in a browser with the engine
@@ -195,8 +211,11 @@ pointer over a dot, and `#home-scroll` scrolls the work area to the bottom.
 
 ## What is not finished
 
-- The installer and the scheduled task, as above. Until they exist, Leash wants
-  an elevated shell.
+- The installer is built but has never been run here, so no installation has
+  been seen end to end. The scheduled task is checked as far as an account
+  without administrator rights can check it: Windows parses the XML and then
+  refuses to register it, which is the right order of events. One run of
+  `scripts/task-test.ps1` from an elevated shell finishes the job.
 - The tray, the single-instance lock, and close-to-tray have run by hand only.
   No test covers them.
 - Stop counts live in memory. Changing the watch list rebuilds the watchdog and

@@ -3,6 +3,7 @@
 
 mod commands;
 mod state;
+mod task;
 mod tray;
 
 use leash_engine::watchdog::WatchEvent;
@@ -50,6 +51,13 @@ pub fn run() {
         .setup(move |app| {
             forward_events(app.handle().clone(), received)?;
             tray::create(app.handle())?;
+
+            // The window is created hidden, so that a start at logon shows no
+            // flash of a window on its way out. This is where it comes back.
+            if !app.state::<AppState>().start_minimized() {
+                tray::show_window(app.handle());
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
