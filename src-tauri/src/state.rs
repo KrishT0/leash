@@ -609,6 +609,13 @@ impl AppState {
             return Ok(());
         }
 
+        // A service the user removed does not keep a count that would apply to it
+        // if it were added again later. The counts of the rest stay, so a service
+        // one stop from the cap, or already given up, is not forgiven by adding
+        // another one.
+        let watched: Vec<&str> = watchable.iter().map(|info| info.name.as_str()).collect();
+        inner.retries.keep_only(&watched);
+
         let settings = WatchSettings {
             lists: SafetyLists::embedded().map_err(|error| error.to_string())?,
             never_touch: inner.config.never_touch.names.clone(),

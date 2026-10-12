@@ -248,6 +248,16 @@ impl RetryBook {
             Err(poisoned) => poisoned.into_inner(),
         }
     }
+
+    /// Forget every service that is not in this list.
+    ///
+    /// A rebuild passes the services it is about to watch. A service the user
+    /// removed does not keep a count, which would otherwise apply to it if it
+    /// were added again later.
+    pub fn keep_only(&self, services: &[&str]) {
+        self.lock()
+            .retain(|name, _| services.iter().any(|kept| kept.eq_ignore_ascii_case(name)));
+    }
 }
 
 /// The watchdog. One thread watches each monitored service.
@@ -1064,6 +1074,42 @@ mod tests {
                 .count();
         }
         count
+    }
+
+    #[test]
+    fn should_keep_a_count_when_another_service_is_added() {
+        let book = RetryBook::new();
+        let now = Instant::now();
+        for _ in 0..MAX_STOPS {
+            book.lock()
+                .entry("Spooler".to_string())
+                .or_default()
+                .record_stop(now);
+        }
+
+        // The user adds a second service, which rebuilds the watch.
+        book.keep_only(&["Spooler", "bthserv"]);
+
+        let counts = book.lock();
+        let spooler = counts.get("Spooler").expect("the first service's count");
+        assert!(
+            spooler.has_given_up(now),
+            "the gave_up badge must survive a rebuild"
+        );
+    }
+
+    #[test]
+    fn should_forget_a_service_that_is_no_longer_watched() {
+        let book = RetryBook::new();
+        let now = Instant::now();
+        book.lock()
+            .entry("Spooler".to_string())
+            .or_default()
+            .record_stop(now);
+
+        book.keep_only(&["bthserv"]);
+
+        assert!(book.lock().get("Spooler").is_none());
     }
 
     #[test]
