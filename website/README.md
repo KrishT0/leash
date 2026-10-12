@@ -23,10 +23,17 @@ because the connection is made once in the Cloudflare dashboard.
 
 ## What is in this folder
 
-`index.html` is the page. The markup, the styles and the script all live in that
-one file. It asks one other host for two things, the GSAP scripts from cdnjs that
-drive the motion. The typefaces come from this folder, so nothing is loaded from
-Google and no preconnect to it is needed.
+`index.html` is the landing page. `site.css` holds the styles for it and for the
+404 page, and the typefaces come from this folder, so nothing is loaded from
+Google. `index.html` asks one other host for two things: the GSAP scripts from
+cdnjs that drive the motion.
+
+`404.html` is shown for any address that does not exist. This matters more than it
+looks. Cloudflare Pages serves the root page for an unknown path unless a
+`404.html` sits at the top level of the output, which means a wrong address would
+otherwise answer 200 with the landing page, for search engines as much as for the
+visitor. The page carries `noindex` and no social tags, and it needs no script,
+because it uses the same classes as the landing page and nothing on it moves.
 
 `fonts` holds three families, latin subset only, which is all the page needs:
 
@@ -58,24 +65,21 @@ not the production configuration. Ours holds the project name and the output
 folder only, both of which match the dashboard, so the two cannot disagree today.
 Delete the file if you would rather keep the dashboard in charge.
 
-Two files are still owed, and the tags for them are already in the page:
+One file is still owed, and its tags are already in the page:
 
-- `404.html`. Cloudflare Pages serves the root page for any unknown path unless a
-  `404.html` sits at the top level of the output. Without it, a wrong address
-  answers 200 with the landing page, which is bad for search engines as well as
-  for the visitor.
 - `og.png`, a 1200 by 630 image for link previews. Until it exists, a shared link
-  shows the title and description with no picture.
+  shows the title and the description with no picture.
 
 `_headers` is read by Cloudflare Pages and applied to every response. It turns
 off content type sniffing, keeps the referrer inside the origin, refuses to be
 framed, and denies the location, camera and microphone permissions.
 
-There is no content security policy on purpose. The page carries inline styles
-and an inline script, so a policy for it needs `unsafe-inline` to work at all,
-which is most of what such a policy is for. Moving the script into its own file is
-the change that would make a real one possible. Self-hosted fonts already removed
-one third-party host. cdnjs is the one that remains.
+There is no content security policy yet, and the styles are no longer the reason.
+They moved out of the page into `site.css`, and `404.html` has no script at all.
+What blocks a strict policy today is the landing page's inline script, which runs
+the theme toggle, the rail and the motion, and the inline `application/ld+json`
+block. A policy for those needs `unsafe-inline` or hashes. Self-hosted fonts
+already removed one third-party host, and cdnjs is the one that remains.
 
 ## The domain
 

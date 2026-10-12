@@ -1,0 +1,536 @@
+/* The site's styles. The landing page and the 404 page both use this file.
+   The page carried them in a <style> block until the 404 page needed the same
+   rules, and one copy of them is better than two that drift apart. */
+
+/* The three typefaces, served from the site itself, so the page asks no
+   other host for anything. Rubik and JetBrains Mono are variable files,
+   so one file each covers every weight the page uses. The licences for
+   all three sit beside the fonts in fonts/. */
+@font-face {
+    font-family: Rubik;
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url("/fonts/rubik-latin.woff2") format("woff2");
+}
+@font-face {
+    font-family: "Instrument Serif";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/instrument-serif-italic-latin.woff2") format("woff2");
+}
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 100 800;
+    font-display: swap;
+    src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+:root {
+    --bg: #101216;
+    --fg: #f3f4f6;
+    --mute: #8b909a;
+    --line: #2a2d34;
+    --btn: #f3f4f6;
+    --btn-fg: #101216;
+    --nav: calc(48px + env(safe-area-inset-top, 0px));
+    --bar: 47px;
+    --gut: clamp(120px, 10vw, 160px);
+    --rail: 200px;
+    box-sizing: border-box;
+}
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        --bg: #f5f5f2;
+        --fg: #121214;
+        --mute: #6b6f76;
+        --line: #d6d6d0;
+        --btn: #121214;
+        --btn-fg: #f5f5f2;
+    }
+}
+:root[data-theme="light"] {
+    --bg: #f5f5f2;
+    --fg: #121214;
+    --mute: #6b6f76;
+    --line: #d6d6d0;
+    --btn: #121214;
+    --btn-fg: #f5f5f2;
+}
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--nav);
+}
+#s1 {
+    scroll-margin-top: calc(var(--bar) * 2);
+}
+#s2 {
+    scroll-margin-top: calc(var(--bar) * 3);
+}
+#s3 {
+    scroll-margin-top: calc(var(--bar) * 4);
+}
+body {
+    margin: 0;
+    padding-inline: env(safe-area-inset-left, 0px)
+        env(safe-area-inset-right, 0px);
+    -webkit-text-size-adjust: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font:
+        400 1.0625rem/1.6 Rubik,
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        sans-serif;
+}
+a {
+    color: inherit;
+}
+.mono,
+code {
+    font-family:
+        "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+.lbl {
+    font:
+        500 0.72rem/1 "JetBrains Mono",
+        ui-monospace,
+        Consolas,
+        monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 3px;
+}
+/* top bar */
+header {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: var(--nav);
+    padding-top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    display: flex;
+    align-items: stretch;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+}
+header > * {
+    display: flex;
+    align-items: center;
+    padding: 0 1.1rem;
+    text-decoration: none;
+}
+.logo {
+    width: calc(var(--gut) + 1px);
+    flex: none;
+    border-right: 1px solid var(--line);
+    font-weight: 800;
+    gap: 0.55rem;
+    letter-spacing: -0.01em;
+}
+.nav {
+    gap: 1.6rem;
+    flex: 1;
+}
+.nav a {
+    color: var(--mute);
+    text-decoration: none;
+}
+.nav a:hover {
+    color: var(--fg);
+}
+#theme {
+    margin-left: auto;
+    background: none;
+    border: 0;
+    border-left: 1px solid var(--line);
+    color: var(--mute);
+    cursor: pointer;
+    padding: 0;
+    width: calc(var(--rail) + 1px - 120px);
+    justify-content: center;
+}
+.get {
+    background: var(--btn);
+    color: var(--btn-fg);
+    font-weight: 500;
+    width: 120px;
+    padding: 0;
+    justify-content: center;
+}
+/* frame */
+main {
+    margin: 0 var(--rail) 0 var(--gut);
+    border-inline: 1px solid var(--line);
+    padding-top: var(--nav);
+    min-height: 100svh;
+}
+.bar {
+    position: sticky;
+    top: calc(var(--nav) + var(--bar) * var(--i));
+    z-index: 5;
+    height: var(--bar);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 1.5rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+}
+.bar span:first-child {
+    color: var(--fg);
+}
+.bar span:last-child {
+    color: var(--mute);
+}
+.sec {
+    border-bottom: 1px solid var(--line);
+}
+/* hero */
+.hero {
+    padding: clamp(3rem, 10vh, 7rem) 1.5rem clamp(3rem, 10vh, 6rem);
+}
+.copy {
+    min-width: 0;
+}
+.acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.ghost {
+    background: none;
+    color: var(--fg);
+    border: 1px solid var(--line);
+}
+
+.cp {
+    margin-top: 0.6rem;
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--mute);
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+}
+.cp:hover {
+    color: var(--fg);
+}
+
+h1 {
+    font-size: clamp(2.6rem, 6.2vw, 5.4rem);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+    margin: 0 0 1.5rem;
+    max-width: 13ch;
+}
+h1 em {
+    font:
+        italic 400 1.12em/1 "Instrument Serif",
+        Georgia,
+        serif;
+    letter-spacing: -0.01em;
+}
+.ln {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.1em;
+}
+.ln > span {
+    display: block;
+}
+.lead {
+    color: var(--mute);
+    font-size: 1.2rem;
+    max-width: 36ch;
+    margin: 0 0 2rem;
+}
+.btn {
+    display: inline-block;
+    background: var(--btn);
+    color: var(--btn-fg);
+    padding: 0.95rem 1.4rem;
+    text-decoration: none;
+    font-weight: 500;
+}
+.btn:hover {
+    opacity: 0.86;
+}
+.meta {
+    color: var(--mute);
+    margin: 1.25rem 0 0;
+}
+#os-note {
+    display: none;
+    color: var(--mute);
+    font-size: 0.9rem;
+    margin: 0.5rem 0 0;
+}
+/* cells */
+.cells {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--line);
+}
+.cell {
+    padding: 1.75rem 1.5rem 2.25rem;
+    min-height: 15rem;
+}
+.cell + .cell {
+    border-left: 1px solid var(--line);
+}
+.cell .lbl {
+    color: var(--mute);
+    display: block;
+    margin-bottom: 3rem;
+}
+.cell h3 {
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 0.6rem;
+}
+.cell p {
+    color: var(--mute);
+    margin: 0;
+    max-width: 30ch;
+}
+.specs {
+    grid-template-columns: repeat(4, 1fr);
+}
+.specs .cell {
+    min-height: 0;
+    padding-block: 1.25rem;
+}
+.specs .lbl {
+    margin-bottom: 0.8rem;
+}
+.specs dd,
+.specs p {
+    margin: 0;
+    font-size: 0.9rem;
+    word-break: break-all;
+    color: var(--fg);
+}
+.dl {
+    padding: clamp(3rem, 9vh, 5.5rem) 1.5rem;
+}
+h2 {
+    font-size: clamp(2.4rem, 5.5vw, 4.6rem);
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+    margin: 0 0 1.25rem;
+}
+.note {
+    color: var(--mute);
+    font-size: 0.9rem;
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+}
+.note p {
+    max-width: 58ch;
+    margin: 0;
+}
+.foot {
+    margin: 0;
+    padding: 1.5rem;
+    color: var(--mute);
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--line);
+}
+.foot p {
+    margin: 0;
+}
+.foot p + p {
+    margin-top: 0.5rem;
+}
+.foot a {
+    color: var(--fg);
+    text-underline-offset: 3px;
+}
+/* side rail */
+.rail {
+    position: fixed;
+    top: var(--nav);
+    bottom: 0;
+    right: 0;
+    width: var(--rail);
+    z-index: 4;
+}
+.rail ul {
+    list-style: none;
+    margin: 0;
+    padding: 1.5rem 56px 0 1rem;
+    text-align: right;
+}
+.rail li {
+    font:
+        800 0.85rem/1.25 Rubik,
+        sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--mute);
+    margin-bottom: 0.2rem;
+    transition:
+        color 0.3s,
+        font-size 0.3s;
+}
+.rail a {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    padding: 0.2rem 0;
+}
+.rail a:hover {
+    color: var(--fg);
+}
+.rail li.on {
+    color: var(--fg);
+    font-size: 1.2rem;
+}
+.ticks {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 56px;
+    background: repeating-linear-gradient(
+            to bottom,
+            transparent 0 59px,
+            var(--line) 59px 60px
+        )
+        right/14px 100% no-repeat;
+}
+.mk {
+    position: absolute;
+    right: 0;
+    width: 56px;
+    border-top: 1px solid var(--fg);
+    top: 0;
+    will-change: transform;
+}
+.mk span {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    color: var(--fg);
+}
+@media (max-width: 960px) {
+    main {
+        margin: 0;
+        border-inline: 0;
+    }
+    .rail {
+        display: none;
+    }
+    .cells,
+    .specs {
+        grid-template-columns: 1fr;
+    }
+    .cell + .cell {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+    }
+    .cell {
+        min-height: 0;
+    }
+    .cell .lbl {
+        margin-bottom: 1.25rem;
+    }
+    .nav {
+        display: none;
+    }
+    .logo {
+        margin-right: auto;
+        width: auto;
+    }
+    .get,
+    #theme {
+        width: auto;
+        padding: 0 1rem;
+    }
+}
+@media (max-width: 600px) {
+    :root {
+        --bar: 36px;
+    }
+    .bar {
+        top: var(--nav);
+        padding: 0 1rem;
+    }
+    .bar span:last-child {
+        display: none;
+    }
+    #s1,
+    #s2,
+    #s3 {
+        scroll-margin-top: var(--bar);
+    }
+    .acts .btn {
+        flex: 1 1 100%;
+    }
+    .cp {
+        display: none;
+    }
+    header > * {
+        padding: 0 0.85rem;
+    }
+    .hero {
+        padding: 2.5rem 1rem 3rem;
+    }
+    h1 {
+        font-size: clamp(2.3rem, 12vw, 3rem);
+    }
+    .lead {
+        font-size: 1.05rem;
+    }
+    .btn {
+        display: block;
+        text-align: center;
+    }
+    .cell {
+        padding: 1.25rem 1rem 1.5rem;
+    }
+    .dl {
+        padding: 2.5rem 1rem;
+    }
+    h2 {
+        font-size: clamp(2.2rem, 12vw, 3rem);
+    }
+    .specs .cell {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .specs .lbl,
+    .specs p {
+        margin: 0;
+    }
+    .specs p {
+        text-align: right;
+    }
+    .note,
+    .foot {
+        padding: 1rem;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+    .rail li {
+        transition: none;
+    }
+}
