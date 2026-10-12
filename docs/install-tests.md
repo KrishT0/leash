@@ -86,6 +86,29 @@ That must report that the task does not exist.
 
 | Case | Expected | Result |
 | --- | --- | --- |
-| Standard user with admin credentials | install succeeds, task owned by the administrator whose credentials were entered | not run |
-| Upgrade | one prompt, task registered again, command points at the new folder, settings kept | not run |
-| Uninstall while running | Leash ends, task deleted, folder removed | not run |
+| Standard user with admin credentials | install succeeds, task owned by the administrator whose credentials were entered | not run, this machine has no standard account |
+| Upgrade | one prompt, task registered again, command points at the new folder, settings kept | passed, with the two differences noted below |
+| Uninstall while running | Leash ends, task deleted, folder removed | passed |
+
+## What was run, and how
+
+A fresh install, 12 October 2026, on a machine with no Leash left on it. The
+program, the task definition file, the Start menu shortcut and the uninstall
+entry all appeared. The task runs `C:\Program Files\Leash\leash.exe
+--autostart`, at the highest level available, with no time limit, and its logon
+trigger fires for the account that installed it.
+
+The upgrade case, 12 October. The same build was installed over itself, into the
+same folder, with Leash running. The installer ended the running Leash rather than
+stalling on it, replaced the task, and left the settings byte for byte the same.
+Two things a true upgrade would add are not covered: a different version, and an
+install into a different folder.
+
+The uninstall case, 12 October. Leash was running, then the uninstaller ran with
+`/S`. Leash ended, and the folder, the task, the shortcut and the uninstall entry
+all went. The settings and the activity log stayed. The `/S` flag means the
+uninstall wizard was never shown, so its own question about deleting app data was
+never seen.
+
+What is still not run: the standard user case, and the logon start itself, which
+needs a log off and back on.
