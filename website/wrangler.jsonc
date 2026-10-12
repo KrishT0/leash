@@ -1,5 +1,0 @@
-{
-    "$schema": "https://unpkg.com/wrangler/config-schema.json",
-    "name": "leash",
-    "pages_build_output_dir": "."
-}

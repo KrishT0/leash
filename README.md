@@ -183,9 +183,9 @@ form a person can read.
 two fonts, Bricolage Grotesque and JetBrains Mono, are served from this
 repository along with their OFL licences.
 
-`website` is the public site, plain HTML with no build step. Cloudflare Pages
-serves it straight from the repository, and `website/README.md` holds the
-settings to enter in the dashboard.
+`website` is the public site, plain HTML with no build step. A Cloudflare Worker
+with static assets serves it, configured by `wrangler.jsonc` at the root of this
+repository. `docs/website.md` holds the settings and the deploy steps.
 
 `.github/workflows/release.yml` builds the installer on a version tag and
 attaches it to a GitHub Release. It checks the four version fields against the
