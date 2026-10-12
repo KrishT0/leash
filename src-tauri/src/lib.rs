@@ -43,6 +43,11 @@ pub fn run() {
     // may stay in the tray. Section 6 gives the tray as the way back in.
     let autostart = std::env::args().any(|argument| argument == "--autostart");
 
+    // The restart hands over to that same task, so a restart and a logon start
+    // cannot be told apart by their arguments. The request written before the
+    // handover is what tells them apart.
+    let show_on_start = app_state.take_restart_window();
+
     tauri::Builder::default()
         // This runs first, so a second launch only shows the window of the one
         // that is already running, and then ends.
@@ -64,7 +69,8 @@ pub fn run() {
             // double click, always shows the window, and so does a first run.
             let hidden = autostart
                 && app.state::<AppState>().start_minimized()
-                && !app.state::<AppState>().first_run();
+                && !app.state::<AppState>().first_run()
+                && !show_on_start;
             if !hidden {
                 tray::show_window(app.handle());
             }

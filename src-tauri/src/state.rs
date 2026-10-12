@@ -9,7 +9,7 @@ use leash_engine::safety::{SafetyLists, Suggested, Verdict};
 use leash_engine::scm::{self, DEFAULT_WAIT, ServiceInfo, StartOutcome, StopOutcome};
 use leash_engine::watchdog::{RetryBook, WatchEvent, WatchSettings, Watchdog};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::{Mutex, MutexGuard};
 
@@ -17,6 +17,39 @@ use crate::task;
 
 /// Longest log the UI may ask for in one call.
 const MAX_LOG_LIMIT: usize = 1_000;
+
+/// Where the request for a visible restart is written, beside the config.
+fn restart_marker(config_path: &Path) -> PathBuf {
+    config_path.with_file_name("show-on-start")
+}
+
+/// Ask for the next start to show the window.
+///
+/// The restart hands over to the scheduled task, and that task always starts
+/// Leash with `--autostart`, which keeps the window out of the way. Without this
+/// request the app would come back with no window at all, and the button would
+/// look like it had done nothing. A failure is not worth reporting: the worst
+/// case is a restart that leaves Leash in the tray.
+pub fn request_restart_window() {
+    let Some(config_path) = config_path() else {
+        return;
+    };
+    let _ = std::fs::write(
+        restart_marker(&config_path),
+        "the restart asked for the window\n",
+    );
+}
+
+/// True once, for the start that follows a restart. Reading it clears it.
+fn take_restart_window(config_path: &Path) -> bool {
+    let marker = restart_marker(config_path);
+    if marker.exists() {
+        let _ = std::fs::remove_file(&marker);
+        true
+    } else {
+        false
+    }
+}
 
 /// The sentence the UI shows when Leash cannot touch services. Section 6 words
 /// the banner this way, so the text lives in one place.
@@ -294,6 +327,11 @@ impl AppState {
     /// True when this launch has never run before.
     pub fn first_run(&self) -> bool {
         self.first_run
+    }
+
+    /// True when the last thing the user asked for was a restart with rights.
+    pub fn take_restart_window(&self) -> bool {
+        take_restart_window(&self.config_path)
     }
     /// The three facts the tray colour needs. This reads nothing from Windows
     /// and no files, so the tray can ask for it whenever it likes.
@@ -859,5 +897,21 @@ mod tests {
         let _ = state.stop_now("Spooler");
 
         assert!(state.log(1_000_000).expect("log").len() <= MAX_LOG_LIMIT);
+    }
+
+    #[test]
+    fn should_honour_a_restart_request_once() {
+        let config_path = std::env::temp_dir()
+            .join("leash-restart-marker-test")
+            .join("config.toml");
+        let _ = std::fs::remove_file(restart_marker(&config_path));
+
+        assert!(!take_restart_window(&config_path), "nothing asked for it");
+
+        std::fs::create_dir_all(config_path.parent().expect("a folder")).expect("the folder");
+        std::fs::write(restart_marker(&config_path), "asked for the window").expect("the marker");
+
+        assert!(take_restart_window(&config_path), "the request is honoured");
+        assert!(!take_restart_window(&config_path), "and only once");
     }
 }

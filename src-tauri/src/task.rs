@@ -18,9 +18,6 @@ pub const TASK_NAME: &str = "Leash";
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-#[cfg(windows)]
-const DETACHED_PROCESS: u32 = 0x0000_0008;
-
 /// The flag that turns the task on or off.
 fn change_flag(enabled: bool) -> &'static str {
     if enabled { "/ENABLE" } else { "/DISABLE" }
@@ -65,6 +62,10 @@ const RESTART_WAIT_PINGS: u32 = 3;
 ///
 /// The task name comes from the constant above and nothing else, so the shell
 /// never sees a string this program did not write.
+///
+/// The redirection matters more than it looks. Without it `ping` prints to the
+/// console, and this command hands itself to `cmd`, which only gets a console on
+/// screen when it has none of its own.
 fn restart_command(pings: u32) -> String {
     format!("ping -n {pings} 127.0.0.1 >nul & schtasks /Run /TN \"{TASK_NAME}\"")
 }
@@ -88,14 +89,23 @@ pub fn restart_as_admin() -> Result<(), String> {
     }
 
     let mut command = Command::new("cmd");
-    command.args(["/C", &restart_command(RESTART_WAIT_PINGS)]);
+    command.args(["/C"]);
 
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // No console of its own, and no tie to this process, which is about to
-        // go. The wait has to outlive us or it is worth nothing.
-        command.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
+
+        // raw_arg passes the string through exactly as it is written. args()
+        // quoted it the way Rust quotes an argument, and cmd does not understand
+        // backslash escaping, so the line arrived mangled: the redirection was
+        // lost and the schtasks half never ran.
+        command.raw_arg(restart_command(RESTART_WAIT_PINGS));
+
+        // A console without a window. DETACHED_PROCESS was here as well and did
+        // the opposite of what it sounds like, because cmd allocates a console of
+        // its own when it has none, which puts it on screen. The child outlives
+        // this process without any flag; Windows does not tie them together.
+        command.creation_flags(CREATE_NO_WINDOW);
     }
 
     command

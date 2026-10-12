@@ -8,7 +8,7 @@
 //! main thread. A stop can wait a minute, and that must not freeze the window. A
 //! command that changes what Leash is doing refreshes the tray at the end.
 
-use crate::state::{AppState, ServiceView, Snapshot};
+use crate::state::{AppState, ServiceView, Snapshot, request_restart_window};
 use crate::task;
 use crate::tray;
 use leash_engine::config::{General, Policy};
@@ -138,6 +138,12 @@ pub fn add_never_touch(
 #[tauri::command(async)]
 pub fn restart_as_admin(app: AppHandle) -> Result<(), String> {
     task::restart_as_admin()?;
+
+    // Written only once the task is on its way, so a restart that could not be
+    // asked for leaves nothing behind. The task starts Leash with --autostart,
+    // which hides the window, and this is the request that brings it back.
+    request_restart_window();
+
     app.exit(0);
     Ok(())
 }
