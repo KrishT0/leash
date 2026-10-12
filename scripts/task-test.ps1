@@ -53,13 +53,11 @@ Write-Host "What Task Scheduler stored:"
 foreach ($field in @(
     "RunLevel",
     "LogonType",
-    "LogonTrigger",
     "ExecutionTimeLimit",
     "MultipleInstancesPolicy",
     "DisallowStartIfOnBatteries",
     "StopIfGoingOnBatteries",
-    "Command",
-    "ScheduledTaskState"
+    "Command"
 )) {
     $line = $stored | Select-String -Pattern "<$field>" | Select-Object -First 1
     if ($line) {
@@ -69,10 +67,54 @@ foreach ($field in @(
     }
 }
 
+# The logon trigger comes back as an empty element, so it is matched without a
+# closing bracket. An empty element is a trigger that fires.
+$trigger = $stored | Select-String -Pattern "<LogonTrigger" | Select-Object -First 1
+if ($trigger) {
+    Write-Host "  <LogonTrigger /> at logon"
+} else {
+    Write-Host "  LogonTrigger : not in the stored task"
+}
+
+# The account is stored as a SID, which is not much use to read.
+$sid = $stored | Select-String -Pattern "<UserId>([^<]+)</UserId>" | Select-Object -First 1
+if ($sid) {
+    $value = $sid.Matches[0].Groups[1].Value
+    try {
+        $name = (New-Object System.Security.Principal.SecurityIdentifier($value)).Translate([System.Security.Principal.NTAccount]).Value
+    } catch {
+        $name = "$value (could not be resolved)"
+    }
+    Write-Host "  <UserId> $name"
+}
+
 Write-Host ""
-Write-Host "Starting it through the task. The window should appear with no prompt,"
-Write-Host "and the left rail should say the app is running elevated."
+Write-Host "The same task in the words Task Scheduler uses:"
+schtasks /Query /TN $taskName /V /FO LIST |
+    Select-String -Pattern "Status|Logon Mode|Run As User|Schedule Type|Scheduled Task State|Idle Time" |
+    ForEach-Object { "  " + ($_.Line -replace "\s+", " ").Trim() }
+
+Write-Host ""
+Write-Host "Starting it through the task. There should be no prompt."
 schtasks /Run /TN $taskName | Out-Host
+
+# What appears on screen depends on one setting, so say which one to expect.
+$cfg = Join-Path $env:APPDATA "Leash\config.toml"
+$minimized = $true
+if (Test-Path $cfg) {
+    $line = Get-Content $cfg | Select-String -Pattern "^\s*start_minimized\s*=\s*(\w+)" | Select-Object -First 1
+    if ($line) { $minimized = $line.Matches[0].Groups[1].Value -eq "true" }
+}
+
+Write-Host ""
+if ($minimized) {
+    Write-Host "Start minimized to tray is on, so no window will appear. Look for the"
+    Write-Host "tray icon, choose Open, and check that the left rail says the app runs"
+    Write-Host "elevated. That is the whole check."
+} else {
+    Write-Host "Start minimized to tray is off, so the window should appear by itself,"
+    Write-Host "with no prompt, and the left rail should say the app runs elevated."
+}
 
 Write-Host ""
 Write-Host "Remove it when you are finished with: schtasks /Delete /TN $taskName /F"

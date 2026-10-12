@@ -121,10 +121,9 @@ starts Leash at logon with the highest available rights, so no prompt appears at
 logon, and it removes that task again on uninstall. It creates the Start menu
 shortcut, which is also what lets a Windows notification carry the app id.
 
-The installer has been built on this machine, but never run, so the task it
-registers has not been seen in Task Scheduler.
-`scripts/task-test.ps1` checks the same task without installing anything, which
-is the quicker way to find out whether Windows accepts it.
+The installer has been built on this machine, but never run. The task it
+registers has been checked on its own with `scripts/task-test.ps1`: Task
+Scheduler stores it, and starting it brings up Leash with no prompt.
 
 ## Where it keeps things
 
@@ -211,11 +210,12 @@ pointer over a dot, and `#home-scroll` scrolls the work area to the bottom.
 
 ## What is not finished
 
-- The installer is built but has never been run here, so no installation has
-  been seen end to end. The scheduled task is checked as far as an account
-  without administrator rights can check it: Windows parses the XML and then
-  refuses to register it, which is the right order of events. One run of
-  `scripts/task-test.ps1` from an elevated shell finishes the job.
+- The installer is built but has never been run, so no installation has been
+  seen end to end. The hook that registers the task has run from the script
+  rather than from an install, and the two write the task in the same way.
+- The scheduled task itself is verified. Task Scheduler keeps the highest
+  available rights, a logon trigger for the installing account, no time limit,
+  one instance at a time, and the battery settings off.
 - The tray, the single-instance lock, and close-to-tray have run by hand only.
   No test covers them.
 - Stop counts live in memory. Changing the watch list rebuilds the watchdog and
