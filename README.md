@@ -230,9 +230,7 @@ pointer over a dot, and `#home-scroll` scrolls the work area to the bottom.
   program, which is what administrator rights look like from outside.
 - The tray, the single-instance lock, and close-to-tray have run by hand only.
   No test covers them.
-- Stop counts live in memory. Changing the watch list rebuilds the watchdog and
-  clears them, so a `gave_up` badge can vanish when you add another service.
-- The daily counts are keyed by UTC date. A catch late in the evening in India
-  lands on the previous day's bar.
+- 106 public items in the engine carry no doc comment, so the `missing_docs` lint
+  cannot be turned on yet. The lint table in `Cargo.toml` says so in place.
 - There is no licence file yet. The two fonts are the exception, and theirs sit
   beside them in `public/fonts/`.
