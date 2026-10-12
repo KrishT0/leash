@@ -39,6 +39,10 @@ pub fn run() {
         }
     };
 
+    // Only the scheduled task passes this, so a start at logon is the one that
+    // may stay in the tray. Section 6 gives the tray as the way back in.
+    let autostart = std::env::args().any(|argument| argument == "--autostart");
+
     tauri::Builder::default()
         // This runs first, so a second launch only shows the window of the one
         // that is already running, and then ends.
@@ -54,7 +58,14 @@ pub fn run() {
 
             // The window is created hidden, so that a start at logon shows no
             // flash of a window on its way out. This is where it comes back.
-            if !app.state::<AppState>().start_minimized() {
+            //
+            // Only the scheduled task passes --autostart, so only an autostart
+            // launch can stay in the tray. A launch from the Start menu, or a
+            // double click, always shows the window, and so does a first run.
+            let hidden = autostart
+                && app.state::<AppState>().start_minimized()
+                && !app.state::<AppState>().first_run();
+            if !hidden {
                 tray::show_window(app.handle());
             }
 

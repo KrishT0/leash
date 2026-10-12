@@ -124,6 +124,9 @@ pub struct AppState {
     /// The log for the actions the user starts from the UI. The watchdog writes
     /// its own lines through its own handle.
     log: Mutex<ActivityLog>,
+    /// True when this launch found no config file, so the app has not been run
+    /// before. Such a launch always shows the window.
+    first_run: bool,
     /// The parts that change as the user works.
     inner: Mutex<Inner>,
 }
@@ -162,6 +165,10 @@ impl AppState {
         // service it must never touch.
         let lists = SafetyLists::embedded().map_err(|error| error.to_string())?;
 
+        // Read before anything can create the file, because this is what tells a
+        // first launch from every later one.
+        let first_run = !config_path.exists();
+
         // A config file that cannot be read must not stop the app: the user has
         // to be able to open Settings and see what is wrong.
         let (config, config_error) = match Config::load(&config_path) {
@@ -172,6 +179,15 @@ impl AppState {
             }
         };
 
+        // A first launch writes the file, even with nothing changed yet, so the
+        // next launch is not treated as a first one. Without this, someone who
+        // never touches a setting would be shown the window at every logon. A
+        // failure here is logged rather than fatal: the app runs on its defaults
+        // either way.
+        if first_run && let Err(error) = config.save(&config_path) {
+            tracing::warn!(%error, "the config could not be written on the first run");
+        }
+
         let elevated = elevation::is_elevated().unwrap_or(false);
         let state = Self {
             log: Mutex::new(ActivityLog::new(log_dir.clone())),
@@ -180,6 +196,7 @@ impl AppState {
             stats,
             lists,
             events,
+            first_run,
             inner: Mutex::new(Inner {
                 config,
                 watchdog: None,
@@ -274,6 +291,10 @@ impl AppState {
         lock(&self.inner).config.general.start_minimized
     }
 
+    /// True when this launch has never run before.
+    pub fn first_run(&self) -> bool {
+        self.first_run
+    }
     /// The three facts the tray colour needs. This reads nothing from Windows
     /// and no files, so the tray can ask for it whenever it likes.
     pub fn tray_flags(&self) -> TrayFlags {

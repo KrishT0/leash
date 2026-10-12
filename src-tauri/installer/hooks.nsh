@@ -45,6 +45,7 @@
   FileWriteUTF16LE $0 '  <Actions Context="Author">$\r$\n'
   FileWriteUTF16LE $0 '    <Exec>$\r$\n'
   FileWriteUTF16LE $0 '      <Command>$INSTDIR\${MAINBINARYNAME}.exe</Command>$\r$\n'
+  FileWriteUTF16LE $0 '      <Arguments>--autostart</Arguments>$\r$\n'
   FileWriteUTF16LE $0 '      <WorkingDirectory>$INSTDIR</WorkingDirectory>$\r$\n'
   FileWriteUTF16LE $0 '    </Exec>$\r$\n'
   FileWriteUTF16LE $0 '  </Actions>$\r$\n'

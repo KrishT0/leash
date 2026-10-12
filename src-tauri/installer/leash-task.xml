@@ -53,6 +53,7 @@
   <Actions Context="Author">
     <Exec>
       <Command>__LEASH_EXE__</Command>
+      <Arguments>--autostart</Arguments>
       <WorkingDirectory>__LEASH_DIR__</WorkingDirectory>
     </Exec>
   </Actions>
