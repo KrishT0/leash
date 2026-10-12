@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Leash tray mark, the weights that were compared</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #1c1c1c;
+        color: #ddd;
+        font: 13px/1.6 system-ui, sans-serif;
+      }
+      table { border-collapse: collapse; }
+      th, td { padding: 14px 20px; text-align: left; }
+      thead th, tbody th { font-weight: 500; color: #999; }
+      tbody th { text-align: left; }
+      tbody tr + tr { border-top: 1px solid #333; }
+      img {
+        /* The real pixels, magnified without smoothing. */
+        width: calc(var(--size) * 6);
+        height: calc(var(--size) * 6);
+        image-rendering: pixelated;
+      }
+      td:nth-child(2) img { --size: 16px; }
+      td:nth-child(3) img { --size: 20px; }
+      td:nth-child(4) img { --size: 24px; }
+      td:nth-child(5) img { --size: 32px; }
+    </style>
+  </head>
+  <body>
+    <p>The first row is what the app uses. The others are the weights it was
+    chosen over, at the four sizes Windows draws a tray icon.</p>
+    <table>
+      <thead><tr><th>Weight</th><th>16 px</th><th>20 px</th><th>24 px</th><th>32 px</th></tr></thead>
+      <tbody>
+      <tr><th>Shipped: ring 0.14, dot 0.14</th><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAe0lEQVR42mP4//8/AyWYgRYGsABxDBBvB+L7ULwdKsZCyAAeIN7/HzfYD1WD1QAWNM2LgTgFihejGcKCzYAYJEUhWLwWgiQfg82A7Ug2YwsbEyD+DlXzGogN0A24D5VMwWHAerTwWE51Ayj2AsWBSHE0UpyQqJKU6Z8bAbA8RmSXfKU8AAAAAElFTkSuQmCC" alt="16" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAApUlEQVR42mP4//8/AzUxA70N5ABiGyBOgGIbqBjJBoI0NQDx+/+Y4D1UjoNYAyWA+PJ/wuAyVC1eAznQDPsNxMuBOAeKl0PFkA3lwGdgA5Li+0Csg8UHOlA5GGjAZSAHUpj9xmEYDFughakCNgNtkBQtJxD729HC8zEQC6AbmICkIAePYSo4IimC5gZS3ctUjxSqJxuaJGyqZz2aFA40Kb4GT4kNAOUbHbK6zPqkAAAAAElFTkSuQmCC" alt="20" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAt0lEQVR42mP4//8/Ay0xw4iwQAeIm4F4PxDfh+L9UDEdSiwQAeLl/wmD5VC1JFmgAcSP/xMPHkP1EGWBCBbDvwPxZiBugOLNUDF0S0SIsQA9WLYDsQwWdTJQOfTgwmuBDhbDWfDEEwsWS3TwWdCMFiwyRKSyfjQLzgOxBC4L9iMp3EyE4S44In07LgvuIylqIMKC6XhSFs+AWEDzIKJ5JNM8mdI8o9GlqKB5YUeX4pouFc5opQ/GAPRjXoTunDq3AAAAAElFTkSuQmCC" alt="24" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABBUlEQVR42mP4//8/w0BihlEHDDUHcACxDxD3A/FuIL4OxbuhYj5QNVR3AMjQBiB+/Z8weA1Vy0EtBxhAfUkquA7VS5EDbID483/ywWeoGWQ5wACP5b+B+DQQL4bi01AxXI4wINUBHDiCHWRJMxBLYNEjAZX7jSM6OEhxQAMWQ54DsQkRacYEqhYdNBDrAA4sqf03kZYjO+I3ltzBQYwDfLC4vpnE8kIARxSuB2IeQg7ox+J7CRIdsBtPzlhOyAHomk+TaLkLEdlTA58D0INuMYkOqCHCASmD2gEDHgUDnggHPBsOeEE04EXxoKiMBrw6HhQNkkHRJBsUjdJB0Swf7RkNXwcAAOs/GOQXvnAsAAAAAElFTkSuQmCC" alt="32" /></td></tr>
+      <tr><th>Heavier: ring 0.16, dot 0.15</th><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfUlEQVR42mP4//8/AyWYkAIBKCbJAJCGbiC+/x8B7kPFBAgZoAHEj//jBo+harAaIICm+TwQt0PxeTRDBLAZ0I2kqB+L1/qR5LuxGXAfyWZsYZOAZMBvIA5ANkAASbIdhwHX0cLjMlUNoNgLVAlEiqOR4oRElaRMlcxEEgYASvdQEgek7dkAAAAASUVORK5CYII=" alt="16" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAnElEQVR42mP4//8/AzUxA70N1AHiEiCeDsUlUDGSDdQA4v3/cYP9UDVEGWgDxJ//EwafoWrxGqiBxbDbQLwYim9jMVQDn4HI3vwNxClYfJAClUP2PlYDddBsT8ET+A1oagOwGViC5k1chgkA8Ws0A0EuNkA3cDqSgsV4DIzAEUn9NDeQ6l6meqRQPdnQJGFTPevRpHCgSfE1eEpsABH2LUSQkHt7AAAAAElFTkSuQmCC" alt="20" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAxklEQVR42mP4//8/Ay0xw2CzQAGKqWYBBxDnAPFhIP79HwF+Q8VyoGrIssADiB//JwweQ9WSZEEBmosJgd9QPURZ4IHD8PdAvB+K3+OwxIOQBRxYguU1ECcAMQuSOhao2GsswcWBz4IcLIZr4IknDSyW5OCz4DCa4gQCqYwHiE+j6fkOxAG4LPiNFuYsBCzoxhHp76GWM6BnImSwn4iMdB1PyvKguwU0DyK6RDLNkynNMxrNiwq6FHZ0Ka7pUuHQpcoc/K0KAGiJdNyBRKEmAAAAAElFTkSuQmCC" alt="24" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA+ElEQVR42mP4//8/w0BihlEHUKBZAIgVoFiAXg7wAeLFQPz8PyZ4DpXzoYUDPID4+n/iwXWoHoodwALE/f/JB/1QM8hyAEjj6v+Ug9X4HIHPAf3/qQf6SXWABx7DbgNxDjT1w9QrQMVu49HnQYoDcCW46UDMgSfUOKBqcCVMohzgg8dyYnMNLkf4EOOAxTiCnYMEB8TgcMBnILYh5ABshUwOCZZrAPF3PGnhPRBL4HKAAA5NClQIfmTQjMsBCjg0kFJcnyfCAbsHrQMGPAoGPBEOimw44AXRgBfFg6IyGvDqeFA0SAa8STYoGqWDplk+aDomo31DqmMAG0VAoo4rTdEAAAAASUVORK5CYII=" alt="32" /></td></tr>
+      <tr><th>Lighter: ring 0.12, dot 0.13</th><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAd0lEQVR42mP4//8/AyWYgVYGGABxNxDvhuJuqBhBA1iAuP8/btAPVYPTAJjm90BcAbXVAMp+j2QIVgMMkDRrYHGuBpIhBtgM6IZKVuAIFxEgvg1Vcx7KRzFgN7rpaLgZLTwqqG4AxV6gOBApjkaqJCSKkzL9cyMAYsQ8XP95PSQAAAAASUVORK5CYII=" alt="16" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAmklEQVR42mP4//8/AzUxw0AYyAPEOlDMQ4mBHkC8H4h//0eA31AxD1IMZAHi+f8Jg/lQtQQNRDbsPhCXALEDFJdAxZANxWugB5Li1TjCjAcqBwMe+Azcj+QyHgIR9Rqq9jiy19EVwSKghEBsNqCF52ZsBuogKXAgYOBnLJGkQnMDqe5lqkcKTZIN1RM2TbIe1QsHmhVfg6PEBgDtAg7Sr23N3gAAAABJRU5ErkJggg==" alt="20" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAtElEQVR42mP4//8/Ay0xw4iwgAWIXYC4AYjnQ3EDVIyFUgtigPjxf9zgMVQNyRaAXLb8P/FgOS7f4LIA3fDzQFwCDRYXKPs8FkuIsiAGSdNvIC7AEwQFUDUwEEPIAha0MC8gIhEUoMUJCz4LXNCChZhUZoHmi358FjQgKSwhwnABIH6PJdJzcFkwH0mRCxEWROBIVacHzAKaBxHNI5nmyZTmGY0uRQVdCjuaF9d0q3BGK30GAKdISDRV9NqCAAAAAElFTkSuQmCC" alt="24" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA90lEQVR42mP4//8/w0BihlEHDEUHcACxDRDnAHEDFOdAxTho6QAVIJ4OxJ//4wafoWpUqOkAFqgvf/8nHvyG6mGh1AE8QLz7P/lgN9QMshzAgsdykHgFECdAcQUBtSzkOKABi2GHgdgAjx4DqBp00ECqA1SwxPlqYuIUqmY1ljShQooDpmPxOQsJOYYFS0hMJ9YBHFiymgEZ5UUFlizqQYwDbLAkIlItj8GTPT0IOSAHTVMFGQ54jidrXifkAPTUn0Ci5TpElA8Sg9oBAx4FA54IBzwbDnhBNCiK4gGvjAZFdTzgDZJB0SQbFI3SQdMsH+0ZDU8HAAAnf/LBrlHrzQAAAABJRU5ErkJggg==" alt="32" /></td></tr>
+      <tr><th>Separated: the dot clear of the ring</th><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mP4//8/AyWYgZYGCACxAxQLkGKACBDPB+Lf/xHgN1RMhJABIAXX/+MG19ENQTdgPlThZyBOAGIOKE6Aiv2HqsFqgACSs08DcQUQsyDJJyB5RwCbAQ5YnJyBJM+BJO5AEwMo9gLFgUiVaKQ4IVElKdM3NwIAJUI98JOdm0UAAAAASUVORK5CYII=" alt="16" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAlElEQVR42mP4//8/AzUxw5A3UAaIc4B4OhTnQMVINpAHiCcD8e//mOA3VI6HWANBCg//JwwOYzMUm4GTkTR9BuJmIHaB4maoGAxMJmSgDJI3QRptsFhog2Tob/QwRVecgxZWIDwfiFnQ1DUjqcvBZ+B0HOEVgKbOBUluOl0NpLqXqR4pVE82NEnYVM96NCkchnEBCwCjBRE6dIhSKwAAAABJRU5ErkJggg==" alt="20" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAp0lEQVR42mP4//8/Ay0xw6gF1LBAAYibgfgwEN+H4sNQMQVKLGAB4gYg/v0fN/gNVcNCqgUgDav/Ew9W47IElwUNWFy6HSreAGWj+6yBWAsU0DQ/B2ILLOosoHLIjlAgxoJmNJf1A7EPjiCwQHNMMzEWHMYRzttxBOd2JDWHibHgPp7INCEQX/cHhQU0DyKaRzLNkynNMxpdigqaF3Z0Ka5Hq0z6WAAAw8dLxk22REoAAAAASUVORK5CYII=" alt="24" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA4ElEQVR42mP4//8/w0BihlEHjDqADE0cQOwAxCVA3ADFJVAxDlo6QASI+4H4/X/c4D1UjQi1HRBAwGJsDgmglgMK/pMPCih1QAARPiUUMgHkOkAEh+HvoYlOAUmtAlQMl3oRchzQj8Ww60Asg0ePDFQNOugn1QEcWHzzGYh9CDgA5oj3WEKBgxQHOBCI1+1AzIPHESVY9DiQ4oASIlL4YjwOUMCivoQUBzQQ4YDvBKICPRoahpQDBjwKBjwRDng2HPCCaFAUxQNeGQ2K6nhQNEgGRZNsUDRKR/sFow6gCQYAnrH4NfScg7UAAAAASUVORK5CYII=" alt="32" /></td></tr>
+      <tr><th>Ring only, no dot</th><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeElEQVR42q2TwQ3AIAhFHYExuikHDo7mCBwchNqEpNRgjQGSf9HPIyAWESkR7QygOgI8CTTE8gbrGewA11CXdXT1uACYktsQqtoEAQ9AxlSd1qq5Jw/ApvJqaM3M5AMAQ8cfABofpALCLaQMMfyM4UVKWeWUz3SkG1HlSfZM5Hx6AAAAAElFTkSuQmCC" alt="16" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAlUlEQVR42s2UwQ2AIAxFGYcDIzhOR2AXBmAQBmEMjh5qDz00pAImhUjyLvrzzNdah4jOEndaGIhIJCbytc9CTxR8P4UzS8KLaDg/jbNDoVdklchMVaR+JJQ1bwKUBsD3ZH1VGLqnw+DlQ5cNmjB2NWcTIOtHTZhEIC8Is8inI0LzyuYfxXxstgy2+a+3ZTlsWV//2dgP1WwjxMPvZVoAAAAASUVORK5CYII=" alt="20" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAvElEQVR42s2Wuw3EIAyGKSgYgzKjMAYDUNyGFIySMkUGcOFzYelOFq+cDieW/gbZfJYNBoOIZqXM0wCe9TeAIyVSIQF+DHgtsc9PgEDacWw7+14CvETGIwOOmQKExuYnKbPOBiSMAK5SloMUSfbLz/LaUSmX6wFSZfOt06etAkk9QBHOceIoRhFTegAQNbcTACt6Ai2AF5nkCxcqi1h/C2B5iVSavPyYLr9oy0eFyrBTGdcqD47Kk/n8X8Ub+HlnQvEQr8UAAAAASUVORK5CYII=" alt="24" /></td><td><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA5UlEQVR42u2XuxHDIAyGXaSgZATGoWAUdqHMAJQeyIUH8BiKcqdUiRQeTqTCuvsbG+HPICSxAMCiqeUCmHD2qEDy/wJIqIo64N0Oepd+ARBRG7TbRj7TADdUgXErNMcQwNNxhXlbJQgJoMB5VnoBojDZjsoU/a/xgZ7tgl/sAeAC7o5ywqo5GsMFZhNAEj7eemo4iNQCUJlldx0AjtmO2gLwKcnkgSyXmWQlAnhm6cIAQGDm8hIA5zRaL77+jDkA9S1QD0ITx1A9EamnYhPFSL0cm2hI1FsyE02pmbbczMXkuhuergetsyhc+3NFSwAAAABJRU5ErkJggg==" alt="32" /></td></tr>
+      </tbody>
+    </table>
+  </body>
+</html>

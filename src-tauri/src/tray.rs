@@ -54,7 +54,7 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let flags = app.state::<AppState>().tray_flags();
     let (colour, tooltip) = status(flags);
 
-    let _ = tray.set_icon(Some(icon(colour)));
+    let _ = tray.set_icon(icon(app, colour));
 
     if let Ok(menu) = menu(app, flags.paused) {
         let _ = tray.set_menu(Some(menu));
@@ -101,13 +101,46 @@ fn toggle_pause<R: Runtime>(app: &AppHandle<R>) {
     refresh(app);
 }
 
+/// The tray mark, drawn once for every size Windows asks for.
+///
+/// A tray icon is 16 pixels across on a normal display and larger on a scaled
+/// one. Handing Windows a single large image lets it do the shrinking, and a
+/// ring that survives a hand drawn 32 pixel copy turns into a smudge. Each size
+/// is drawn on its own by `scripts/tray-marks.py`.
+const TRAY_MARKS: [(f64, &[u8]); 4] = [
+    (1.0, include_bytes!("../icons/tray-16.png")),
+    (1.25, include_bytes!("../icons/tray-20.png")),
+    (1.5, include_bytes!("../icons/tray-24.png")),
+    (2.0, include_bytes!("../icons/tray-32.png")),
+];
+
+/// Which mark to use for a display scale factor.
+///
+/// The largest size at or below the asking scale wins, and the smallest is the
+/// floor, so a display between two sizes gets the sharper mark rather than a
+/// stretched one.
+fn tray_mark_index(scale: f64) -> usize {
+    let mut chosen = 0;
+    for (index, (at, _)) in TRAY_MARKS.iter().enumerate() {
+        if scale + 0.001 >= *at {
+            chosen = index;
+        }
+    }
+
+    chosen
+}
+
 /// The tray icon in one colour.
 ///
 /// The mark is drawn on transparency, with no tile of its own, because every
-/// visible pixel takes the colour of the state. Its shapes are heavier than the
-/// app icon's, because the tray draws it at 16 pixels across.
-fn icon(colour: (u8, u8, u8)) -> Image<'static> {
-    let base = tauri::include_image!("icons/tray.png");
+/// visible pixel takes the colour of the state.
+fn icon<R: Runtime>(app: &AppHandle<R>, colour: (u8, u8, u8)) -> Option<Image<'static>> {
+    let scale = app
+        .get_webview_window(MAIN_WINDOW)
+        .and_then(|window| window.scale_factor().ok())
+        .unwrap_or(1.0);
+
+    let base = Image::from_bytes(TRAY_MARKS[tray_mark_index(scale)].1).ok()?;
 
     let mut rgba = base.rgba().to_vec();
     for pixel in rgba.chunks_exact_mut(4) {
@@ -118,7 +151,7 @@ fn icon(colour: (u8, u8, u8)) -> Image<'static> {
         }
     }
 
-    Image::new_owned(rgba, base.width(), base.height())
+    Some(Image::new_owned(rgba, base.width(), base.height()))
 }
 
 /// The colour and the tooltip for a set of flags.
@@ -147,6 +180,35 @@ mod tests {
             paused,
             watching,
         }
+    }
+
+    #[test]
+    fn should_read_every_tray_mark() {
+        // include_bytes! does not look inside the files, so a mark that is
+        // corrupt, or in the wrong format, would only show up in the tray.
+        for (scale, bytes) in TRAY_MARKS {
+            let image = Image::from_bytes(bytes).expect("a tray mark decodes");
+            assert!(image.width() > 0, "at scale {scale}");
+            assert_eq!(image.width(), image.height(), "at scale {scale}");
+        }
+    }
+
+    #[test]
+    fn should_draw_the_tray_at_the_size_the_display_asks_for() {
+        assert_eq!(tray_mark_index(1.0), 0);
+        assert_eq!(tray_mark_index(1.25), 1);
+        assert_eq!(tray_mark_index(1.5), 2);
+        assert_eq!(tray_mark_index(2.0), 3);
+    }
+
+    #[test]
+    fn should_fall_back_to_the_nearest_mark_it_has() {
+        // Below the smallest and above the largest, and between two. A display
+        // between sizes takes the smaller, sharper mark over a stretched one.
+        assert_eq!(tray_mark_index(0.9), 0);
+        assert_eq!(tray_mark_index(1.1), 0);
+        assert_eq!(tray_mark_index(1.4), 1);
+        assert_eq!(tray_mark_index(3.0), 3);
     }
 
     #[test]
