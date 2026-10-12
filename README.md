@@ -196,12 +196,18 @@ that need a real machine are ignored.
 A commit cannot carry a new lint finding. lefthook runs Biome over the staged
 frontend files first, and a warning fails the hook as well as an error.
 
-Three scripts reach the parts a unit test cannot. `scripts/elevated-test.ps1`
+Five scripts reach the parts a unit test cannot. `scripts/elevated-test.ps1`
 builds a throwaway service from a Windows binary, stops it five times, and
 checks that Leash gives up at the cap. `scripts/task-test.ps1` registers the
 scheduled task, prints what Task Scheduler stored, and starts Leash through it,
-which is how the no-prompt start is checked. Both want an administrator shell.
-Nothing in this repository stops a service that Windows needs.
+which is how the no-prompt start is checked. `scripts/install-check.ps1` reads
+what an install left behind, including whether the installer's task hook ran.
+The first two want an administrator shell. Nothing in this repository stops a
+service that Windows needs.
+
+`scripts/tray-marks.py` draws the tray icon at the four sizes Windows asks for,
+and writes the two pages that show them: one for the four that ship, one for the
+weights they were chosen over.
 
 `scripts/preview.mjs` puts the built interface in a browser with the engine
 stubbed, which is how the layout is checked without opening the app.
