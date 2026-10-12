@@ -103,6 +103,34 @@ jobs:
       - name: Build the installer
         run: pnpm tauri build
 
+      - name: Report the file people will download
+        shell: pwsh
+        run: |
+          # The landing page needs a size, a hash and a URL. They belong to the
+          # released file, not to a local build: the installer carries its build
+          # time, so two builds of one commit have different bytes.
+          $onTag = ($env:GITHUB_REF_TYPE -eq "tag")
+          foreach ($file in Get-ChildItem target/release/bundle/nsis/*.exe) {
+            $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+            $size = [math]::Round($file.Length / 1MB, 2)
+            $url = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/latest/download/$($file.Name)"
+
+            Write-Host "$($file.Name), $size MiB, $hash"
+
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "### The landing page values"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ""
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| Placeholder | Value |"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| --- | --- |"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| FILE SIZE | $size MiB |"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| SHA-256 | ``$hash`` |"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| VERSION | $env:GITHUB_REF_NAME |"
+            if ($onTag) {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| DOWNLOAD URL | $url |"
+            } else {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| DOWNLOAD URL | this was not a tag, so there is no release yet. It would be $url |"
+            }
+          }
+
       - name: Keep the installer as an artifact
         uses: actions/upload-artifact@v4
         with:

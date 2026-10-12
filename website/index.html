@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leash | Keep Windows services stopped</title>
+<meta name="description" content="Leash keeps the Windows services you choose stopped. Download it for Windows 11.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Leash | Keep Windows services stopped">
+<meta property="og:description" content="You pick the services. Leash watches them. When one starts, Leash stops it again. Built by Krishna Biswal.">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#101216">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;800&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#101216;--fg:#f3f4f6;--mute:#8b909a;--line:#2a2d34;--btn:#f3f4f6;--btn-fg:#101216;--nav:calc(48px + env(safe-area-inset-top,0px));--bar:47px;--gut:clamp(120px,10vw,160px);--rail:200px;
+box-sizing:border-box}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f5f2;--fg:#121214;--mute:#6b6f76;--line:#d6d6d0;--btn:#121214;--btn-fg:#f5f5f2}}
+:root[data-theme="light"]{--bg:#f5f5f2;--fg:#121214;--mute:#6b6f76;--line:#d6d6d0;--btn:#121214;--btn-fg:#f5f5f2}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:var(--nav)}
+#s1{scroll-margin-top:calc(var(--bar)*2)}#s2{scroll-margin-top:calc(var(--bar)*3)}#s3{scroll-margin-top:calc(var(--bar)*4)}
+body{margin:0;padding-inline:env(safe-area-inset-left,0px) env(safe-area-inset-right,0px);-webkit-text-size-adjust:100%;background:var(--bg);color:var(--fg);font:400 1.0625rem/1.6 Rubik,system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:inherit}
+.mono,code{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
+.lbl{font:500 .72rem/1 "JetBrains Mono",ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase}
+:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+/* top bar */
+header{position:fixed;inset:0 0 auto 0;height:var(--nav);padding-top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:stretch;background:var(--bg);border-bottom:1px solid var(--line)}
+header>*{display:flex;align-items:center;padding:0 1.1rem;text-decoration:none}
+.logo{width:calc(var(--gut) + 1px);flex:none;border-right:1px solid var(--line);font-weight:800;gap:.55rem;letter-spacing:-.01em}
+.nav{gap:1.6rem;flex:1}
+.nav a{color:var(--mute);text-decoration:none}
+.nav a:hover{color:var(--fg)}
+#theme{margin-left:auto;background:none;border:0;border-left:1px solid var(--line);color:var(--mute);cursor:pointer;padding:0;width:calc(var(--rail) + 1px - 120px);justify-content:center}
+.get{background:var(--btn);color:var(--btn-fg);font-weight:500;width:120px;padding:0;justify-content:center}
+/* frame */
+main{margin:0 var(--rail) 0 var(--gut);border-inline:1px solid var(--line);padding-top:var(--nav);min-height:100svh}
+.bar{position:sticky;top:calc(var(--nav) + var(--bar)*var(--i));z-index:5;height:var(--bar);display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0 1.5rem;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar span:first-child{color:var(--fg)}.bar span:last-child{color:var(--mute)}
+.sec{border-bottom:1px solid var(--line)}
+/* hero */
+.hero{padding:clamp(3rem,10vh,7rem) 1.5rem clamp(3rem,10vh,6rem)}
+.copy{min-width:0}
+.acts{display:flex;flex-wrap:wrap;gap:.75rem}
+.ghost{background:none;color:var(--fg);border:1px solid var(--line)}
+
+.cp{margin-top:.6rem;background:none;border:1px solid var(--line);color:var(--mute);padding:.35rem .6rem;cursor:pointer}.cp:hover{color:var(--fg)}
+
+h1{font-size:clamp(2.6rem,6.2vw,5.4rem);line-height:1.02;letter-spacing:-.035em;font-weight:800;margin:0 0 1.5rem;max-width:13ch}
+h1 em{font:italic 400 1.12em/1 "Instrument Serif",Georgia,serif;letter-spacing:-.01em}
+.ln{display:block;overflow:hidden;padding-bottom:.1em}
+.ln>span{display:block}
+.lead{color:var(--mute);font-size:1.2rem;max-width:36ch;margin:0 0 2rem}
+.btn{display:inline-block;background:var(--btn);color:var(--btn-fg);padding:.95rem 1.4rem;text-decoration:none;font-weight:500}
+.btn:hover{opacity:.86}
+.meta{color:var(--mute);margin:1.25rem 0 0}
+#os-note{display:none;color:var(--mute);font-size:.9rem;margin:.5rem 0 0}
+/* cells */
+.cells{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.cell{padding:1.75rem 1.5rem 2.25rem;min-height:15rem}
+.cell+.cell{border-left:1px solid var(--line)}
+.cell .lbl{color:var(--mute);display:block;margin-bottom:3rem}
+.cell h3{font-size:1.65rem;letter-spacing:-.02em;font-weight:800;line-height:1.15;margin:0 0 .6rem}
+.cell p{color:var(--mute);margin:0;max-width:30ch}
+.specs{grid-template-columns:repeat(4,1fr)}
+.specs .cell{min-height:0;padding-block:1.25rem}
+.specs .lbl{margin-bottom:.8rem}
+.specs dd,.specs p{margin:0;font-size:.9rem;word-break:break-all;color:var(--fg)}
+.dl{padding:clamp(3rem,9vh,5.5rem) 1.5rem}
+h2{font-size:clamp(2.4rem,5.5vw,4.6rem);line-height:1;letter-spacing:-.035em;font-weight:800;margin:0 0 1.25rem}
+.note{color:var(--mute);font-size:.9rem;margin:0;padding:1.25rem 1.5rem}
+.note p{max-width:58ch;margin:0}
+.foot{margin:0;padding:1.5rem;color:var(--mute);font-size:.9rem;border-bottom:1px solid var(--line)}
+.foot p{margin:0}.foot p+p{margin-top:.5rem}.foot a{color:var(--fg);text-underline-offset:3px}
+/* side rail */
+.rail{position:fixed;top:var(--nav);bottom:0;right:0;width:var(--rail);z-index:4}
+.rail ul{list-style:none;margin:0;padding:1.5rem 56px 0 1rem;text-align:right}
+.rail li{font:800 .85rem/1.25 Rubik,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin-bottom:.2rem;transition:color .3s,font-size .3s}
+.rail a{display:block;color:inherit;text-decoration:none;padding:.2rem 0}.rail a:hover{color:var(--fg)}
+.rail li.on{color:var(--fg);font-size:1.2rem}
+.ticks{position:absolute;top:0;bottom:0;right:0;width:56px;background:repeating-linear-gradient(to bottom,transparent 0 59px,var(--line) 59px 60px) right/14px 100% no-repeat}
+.mk{position:absolute;right:0;width:56px;border-top:1px solid var(--fg);top:0;will-change:transform}
+.mk span{position:absolute;right:4px;top:4px;color:var(--fg)}
+@media (max-width:960px){main{margin:0;border-inline:0}.rail{display:none}.cells,.specs{grid-template-columns:1fr}.cell+.cell{border-left:0;border-top:1px solid var(--line)}.cell{min-height:0}.cell .lbl{margin-bottom:1.25rem}.nav{display:none}.logo{margin-right:auto;width:auto}.get,#theme{width:auto;padding:0 1rem}}
+@media (max-width:600px){:root{--bar:36px}.bar{top:var(--nav);padding:0 1rem}.bar span:last-child{display:none}#s1,#s2,#s3{scroll-margin-top:var(--bar)}.acts .btn{flex:1 1 100%}.cp{display:none}header>*{padding:0 .85rem}.hero{padding:2.5rem 1rem 3rem}h1{font-size:clamp(2.3rem,12vw,3rem)}.lead{font-size:1.05rem}.btn{display:block;text-align:center}.cell{padding:1.25rem 1rem 1.5rem}.dl{padding:2.5rem 1rem}h2{font-size:clamp(2.2rem,12vw,3rem)}.specs .cell{display:flex;justify-content:space-between;gap:1rem}.specs .lbl,.specs p{margin:0}.specs p{text-align:right}.note,.foot{padding:1rem}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rail li{transition:none}}
+</style>
+</head>
+<body>
+<header>
+<a class="logo" href="#top"><svg width="22" height="22" viewBox="-12 -12 24 24" aria-hidden="true"><circle r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="4" cy="-3" r="3" fill="currentColor"/></svg>Leash</a>
+<nav class="nav lbl"><a href="#s1">Features</a><a href="#s2">Modes</a><a class="k" href="#s3">Download</a></nav>
+<button id="theme" class="lbl" type="button" aria-label="Switch theme">Theme</button>
+<a class="get lbl" href="#s3">Get Leash</a>
+</header>
+
+<aside class="rail" aria-label="Page sections">
+<ul id="labels"><li class="on"><a href="#top">Leash</a></li><li><a href="#s1">Features</a></li><li><a href="#s2">Modes</a></li><li><a href="#s3">Download</a></li></ul>
+<div class="ticks" aria-hidden="true"></div>
+<div class="mk" id="mk" aria-hidden="true"><span class="lbl" id="pct">000%</span></div>
+</aside>
+
+<main id="top">
+<div class="bar lbl" style="--i:0"><span>01 / Leash</span><span>For Windows 11</span></div>
+<section class="sec hero" data-s>
+<div class="copy">
+<h1><span class="ln"><span>Keep Windows</span></span><span class="ln"><span><em>services</em> stopped.</span></span></h1>
+<p class="lead">You pick the services. Leash watches them. When one starts, Leash stops it again.</p>
+<div class="acts"><a class="btn lbl" href="#s3">Download for Windows 11</a><a class="btn ghost lbl" href="https://github.com/KrishT0" target="_blank" rel="noopener">View on GitHub</a></div>
+<p class="meta lbl">Version [VERSION]</p>
+<p id="os-note">This device does not run Windows. Leash works on Windows 11 only.</p>
+</div>
+</section>
+
+<div class="bar lbl" style="--i:1"><span>02 / Features</span><span>You stay in control</span></div>
+<section class="sec" id="s1" data-s>
+<div class="cells">
+<div class="cell"><span class="lbl">A</span><h3>Your list only</h3><p>Leash touches only the services you pick. It never starts one on its own.</p></div>
+<div class="cell"><span class="lbl">B</span><h3>Protected by default</h3><p>Core Windows and security services, such as Defender and the firewall, stay locked.</p></div>
+<div class="cell"><span class="lbl">C</span><h3>Quiet in the tray</h3><p>Leash starts with Windows and works in the background.</p></div>
+</div>
+</section>
+
+<div class="bar lbl" style="--i:2"><span>03 / Modes</span><span>Start safe</span></div>
+<section class="sec" id="s2" data-s>
+<div class="cells">
+<div class="cell"><span class="lbl">First</span><h3>Notify only</h3><p>Leash tells you when a service starts. Nothing stops.</p></div>
+<div class="cell"><span class="lbl">Then</span><h3>Dry run</h3><p>Leash logs what it would stop. Still nothing stops.</p></div>
+<div class="cell"><span class="lbl">Last</span><h3>Stop</h3><p>Leash stops the service every time it starts.</p></div>
+</div>
+</section>
+
+<div class="bar lbl" style="--i:3"><span>04 / Download</span><span>Windows 11 (64-bit)</span></div>
+<section class="sec" id="s3" data-s>
+<div class="dl">
+<h2>Get Leash.</h2>
+<p class="lead">Windows asks for administrator rights one time, during the install.</p>
+<a class="btn lbl" href="[DOWNLOAD URL]">Download Leash for Windows 11</a>
+</div>
+<div class="cells specs">
+<div class="cell"><span class="lbl">Version</span><p class="mono">[VERSION]</p></div>
+<div class="cell"><span class="lbl">Size</span><p class="mono">[FILE SIZE]</p></div>
+<div class="cell"><span class="lbl">Requires</span><p class="mono">Windows 11, admin rights</p></div>
+<div class="cell"><span class="lbl">SHA-256</span><p class="mono" id="sha">[SHA-256]</p><button class="cp lbl" type="button" data-copy="sha">Copy</button></div>
+</div>
+<div class="note" style="border-top:1px solid var(--line)"><p>The installer is not signed yet. If Windows shows "Windows protected your PC", click More info, then Run anyway. Do this only if you downloaded the file from this page.</p></div>
+</section>
+<div class="foot"><p>Built by <a href="https://github.com/KrishT0" target="_blank" rel="noopener">KrishT0</a></p></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+(function(){
+var root=document.documentElement;
+try{var t=localStorage.getItem("theme");if(t)root.dataset.theme=t}catch(e){}
+document.getElementById("theme").addEventListener("click",function(){
+var dark=root.dataset.theme?root.dataset.theme==="dark":!matchMedia("(prefers-color-scheme:light)").matches;
+root.dataset.theme=dark?"light":"dark";
+try{localStorage.setItem("theme",root.dataset.theme)}catch(e){}
+});
+if(!/Windows/i.test(navigator.userAgent))document.getElementById("os-note").style.display="block";
+document.querySelectorAll("[data-copy]").forEach(function(b){b.addEventListener("click",function(){var el=document.getElementById(b.dataset.copy);if(!navigator.clipboard)return;navigator.clipboard.writeText(el.textContent).then(function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1500)}).catch(function(){})})});
+
+/* Rail: active label and progress marker follow the scroll. */
+var secs=[].slice.call(document.querySelectorAll("[data-s]")),lis=[].slice.call(document.querySelectorAll("#labels li")),
+mk=document.getElementById("mk"),pct=document.getElementById("pct"),rail=document.querySelector(".rail"),tick=false;
+function update(){
+tick=false;
+var max=document.documentElement.scrollHeight-innerHeight,p=max>0?Math.min(1,Math.max(0,scrollY/max)):0,a=0;
+secs.forEach(function(s,i){if(s.getBoundingClientRect().top<=innerHeight*.55)a=i});
+lis.forEach(function(l,i){l.classList.toggle("on",i===a)});
+mk.style.transform="translateY("+Math.round(p*(rail.clientHeight-1))+"px)";
+pct.textContent=String(Math.round(p*100)).padStart(3,"0")+"%";
+}
+addEventListener("scroll",function(){if(!tick){tick=true;requestAnimationFrame(update)}},{passive:true});
+addEventListener("resize",update);update();
+
+/* Motion: one hero entrance and one reveal for the cells. */
+if(!window.gsap||!window.ScrollTrigger||matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+gsap.registerPlugin(ScrollTrigger);
+gsap.from(".ln>span",{yPercent:110,duration:1,ease:"power4.out",stagger:.12});
+gsap.from(".hero .lead,.hero .btn,.hero .meta",{opacity:0,y:14,duration:.7,delay:.55,stagger:.1});
+gsap.from(".hero em",{opacity:0,duration:.9,delay:.7,ease:"power2.out"});
+
+gsap.to(".hero h1",{y:-36,ease:"none",scrollTrigger:{trigger:".hero",start:"top top",end:"bottom top",scrub:true}});
+gsap.set(".cells .cell",{opacity:0,y:24});
+ScrollTrigger.batch(".cells .cell",{once:true,start:"top 92%",onEnter:function(b){gsap.to(b,{opacity:1,y:0,duration:.7,stagger:.1,ease:"power2.out"});b.forEach(function(c,i){gsap.from(c.children,{opacity:0,y:12,duration:.6,stagger:.08,delay:.15+i*.1,ease:"power2.out"})})}});
+gsap.from("#s3 h2",{opacity:.15,x:-24,ease:"none",scrollTrigger:{trigger:"#s3",start:"top 80%",end:"top 40%",scrub:true}});
+gsap.from("#s3 .dl .lead,#s3 .dl .btn",{opacity:0,y:16,duration:.7,stagger:.12,ease:"power2.out",scrollTrigger:{trigger:"#s3 .dl",start:"top 75%",once:true}});
+gsap.from(".note,.foot",{opacity:0,duration:.8,stagger:.15,scrollTrigger:{trigger:".note",start:"top 98%",once:true}});
+gsap.utils.toArray(".bar").forEach(function(b){gsap.from(b.children,{opacity:0,x:-14,duration:.6,stagger:.1,ease:"power2.out",scrollTrigger:{trigger:b,start:"top 95%",once:true}})});
+})();
+</script>
+</body>
+</html>
