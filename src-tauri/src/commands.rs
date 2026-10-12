@@ -12,6 +12,7 @@
 //! a service refreshes the tray colour at the end.
 
 use crate::state::{AppState, ServiceView, Snapshot};
+use crate::task;
 use crate::tray;
 use leash_engine::config::{General, Policy};
 use leash_engine::log::Entry;
@@ -129,5 +130,17 @@ pub fn add_never_touch(
 ) -> Result<(), String> {
     state.add_never_touch(&name)?;
     tray::refresh(&app);
+    Ok(())
+}
+
+/// Start Leash again with administrator rights, and step aside.
+///
+/// Section 6 gives the banner this way out. The scheduled task is asked for two
+/// seconds from now, so this process has gone and released the single-instance
+/// lock by the time the new copy starts.
+#[tauri::command(async)]
+pub fn restart_as_admin(app: AppHandle) -> Result<(), String> {
+    task::restart_as_admin()?;
+    app.exit(0);
     Ok(())
 }

@@ -84,9 +84,11 @@ export function Rail({ page, onPick, elevated, paused }: RailProps) {
 				<span className="flex items-center gap-2">
 					<i
 						aria-hidden="true"
-						className={`block size-[6.5px] rounded-island ${paused ? "bg-warn" : "bg-ok"}`}
+						className={`block size-[6.5px] rounded-island ${paused || elevated === false ? "bg-warn" : "bg-ok"}`}
 					/>
-					{paused ? "Stop actions off" : "Stop actions on"}
+					{/* Without the rights there are no stop actions, whatever the switch
+					    says, so the line follows the rights as well. */}
+					{elevated === false ? "Stop actions off" : paused ? "Stop actions off" : "Stop actions on"}
 				</span>
 				{/* Leash is Windows 11 only, as section 1 says, so this is a constant. */}
 				<span>Windows 11</span>

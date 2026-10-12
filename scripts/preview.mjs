@@ -118,7 +118,7 @@ const services = [
 ];
 
 const snapshot = {
-  elevated: true,
+  elevated: !process.argv.includes("--no-admin"),
   paused: false,
   watching: true,
   monitored: services.filter((row) => row.policy !== null),

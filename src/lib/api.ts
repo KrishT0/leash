@@ -67,3 +67,11 @@ export function setSettings(settings: General): Promise<void> {
 export function addNeverTouch(name: string): Promise<void> {
   return invoke("add_never_touch", { name });
 }
+
+/**
+ * Start Leash again with administrator rights, through the scheduled task. The
+ * app exits on the Rust side, so nothing after this call runs.
+ */
+export function restartAsAdmin(): Promise<void> {
+  return invoke("restart_as_admin");
+}

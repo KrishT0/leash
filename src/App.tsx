@@ -8,7 +8,7 @@ import type { Caught } from "./components/Orbit";
 import { Rail } from "./components/Rail";
 import { ServiceSheet } from "./components/ServiceSheet";
 import { TopBar } from "./components/TopBar";
-import { getState, setPaused } from "./lib/api";
+import { getState, restartAsAdmin, setPaused } from "./lib/api";
 import {
 	CAUGHT_HOLD_MS,
 	type Page,
@@ -80,6 +80,18 @@ export default function App() {
 		}
 	}
 
+	/**
+	 * Section 6: hand over to the scheduled task, which starts Leash with the
+	 * rights it needs. The app exits from the Rust side a moment later.
+	 */
+	async function elevate() {
+		try {
+			await restartAsAdmin();
+		} catch (error) {
+			setProblem(String(error));
+		}
+	}
+
 	return (
 		<>
 			{/*
@@ -101,7 +113,7 @@ export default function App() {
 						paused={state ? state.paused : null}
 						onTogglePause={() => void togglePause()}
 					/>
-					<Banner state={state} problem={problem} />
+					<Banner state={state} problem={problem} onRestartAsAdmin={() => void elevate()} />
 
 					{state ? (
 						<PageView

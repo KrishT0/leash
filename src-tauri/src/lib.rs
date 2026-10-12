@@ -83,6 +83,7 @@ pub fn run() {
             commands::get_settings,
             commands::set_settings,
             commands::add_never_touch,
+            commands::restart_as_admin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
