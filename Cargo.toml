@@ -2,6 +2,23 @@
 resolver = "3"
 members = ["crates/engine", "src-tauri"]
 
+# Lint levels for every crate here. Each crate opts in with
+# `[lints] workspace = true`, which is what makes an editor show the same
+# findings that `cargo clippy` does.
+# `missing_docs` belongs here, and the engine does not pass it yet: most public
+# fields and enum variants carry no doc comment. Turning it on is a job of its
+# own, not a line in this table. `missing_debug_implementations` is on.
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+
+# `all` locks in the groups clippy warns about by default, so a level cannot
+# drift in a file. `missing_errors_doc` is deliberately absent: every error in
+# this workspace is described on the error type itself, with thiserror, and a
+# second copy in each `# Errors` section would be the kind of comment that goes
+# stale. Turn it on if that ever stops being true.
+[workspace.lints.clippy]
+all = { level = "deny", priority = 10 }
+
 [profile.release]
 codegen-units = 1
 lto = true

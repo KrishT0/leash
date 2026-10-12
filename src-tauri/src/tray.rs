@@ -120,14 +120,10 @@ const TRAY_MARKS: [(f64, &[u8]); 4] = [
 /// floor, so a display between two sizes gets the sharper mark rather than a
 /// stretched one.
 fn tray_mark_index(scale: f64) -> usize {
-    let mut chosen = 0;
-    for (index, (at, _)) in TRAY_MARKS.iter().enumerate() {
-        if scale + 0.001 >= *at {
-            chosen = index;
-        }
-    }
-
-    chosen
+    TRAY_MARKS
+        .iter()
+        .rposition(|(at, _)| scale + 0.001 >= *at)
+        .unwrap_or(0)
 }
 
 /// The tray icon in one colour.

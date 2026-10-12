@@ -7,7 +7,7 @@ use leash_engine::elevation;
 use leash_engine::log::{self, ActivityLog, Entry};
 use leash_engine::safety::{SafetyLists, Suggested, Verdict};
 use leash_engine::scm::{self, DEFAULT_WAIT, ServiceInfo, StartOutcome, StopOutcome};
-use leash_engine::watchdog::{WatchEvent, WatchSettings, Watchdog};
+use leash_engine::watchdog::{RetryBook, WatchEvent, WatchSettings, Watchdog};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
@@ -136,6 +136,8 @@ struct Inner {
     unwatched: Vec<String>,
     /// The reason the config file could not be read, when it could not.
     config_error: Option<String>,
+    /// The stop counts, kept here so a new watchdog inherits them.
+    retries: RetryBook,
 }
 
 impl AppState {
@@ -184,6 +186,7 @@ impl AppState {
                 elevated,
                 unwatched: Vec::new(),
                 config_error,
+                retries: RetryBook::new(),
             }),
         };
 
@@ -232,7 +235,10 @@ impl AppState {
         }
 
         let counts = log::read_stats(&self.stats).map_err(|error| error.to_string())?;
-        let caught_today = counts.get(&log::today()).copied().unwrap_or(0);
+        let caught_today = counts
+            .get(&leash_engine::clock::today())
+            .copied()
+            .unwrap_or(0);
         let weekly = counts
             .into_iter()
             .map(|(date, count)| DayCount { date, count })
@@ -589,6 +595,7 @@ impl AppState {
             elevated: inner.elevated,
             log: ActivityLog::new(self.log_dir.clone()),
             stats: self.stats.clone(),
+            retries: inner.retries.clone(),
             stop_wait: DEFAULT_WAIT,
         };
 

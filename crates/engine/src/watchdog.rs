@@ -7,8 +7,9 @@
 //! This half of the module is the decision. It has no Windows calls, so it is
 //! tested on any OS. The event loop that feeds it lives further down.
 
+use crate::clock::today;
 use crate::config::{Monitored, Policy};
-use crate::log::{ActivityLog, Entry, LogError, bump_catch, today};
+use crate::log::{ActivityLog, Entry, LogError, bump_catch};
 use crate::safety::{SafetyLists, Verdict};
 use crate::scm::{self, ScmError, Status, StopOutcome, WatchState, Watched};
 use std::collections::{HashMap, VecDeque};
@@ -179,6 +180,7 @@ pub enum WatchEvent {
 }
 
 /// What the watchdog needs before it starts.
+#[derive(Debug)]
 pub struct WatchSettings {
     /// The embedded safety lists.
     pub lists: SafetyLists,
@@ -190,6 +192,8 @@ pub struct WatchSettings {
     pub log: ActivityLog,
     /// Where the daily catch counts go.
     pub stats: PathBuf,
+    /// The counts to use. Pass the same one to keep them across a rebuild.
+    pub retries: RetryBook,
     pub stop_wait: Duration,
 }
 
@@ -208,6 +212,7 @@ pub enum WatchError {
 }
 
 /// Everything the watch threads share.
+#[derive(Debug)]
 struct Shared {
     lists: SafetyLists,
     never_touch: Vec<String>,
@@ -216,11 +221,37 @@ struct Shared {
     sink: Sender<WatchEvent>,
     log: Mutex<ActivityLog>,
     stats: PathBuf,
-    retries: Mutex<HashMap<String, RetryState>>,
+    retries: RetryBook,
     stop_wait: Duration,
 }
 
+/// The stop counts and backoffs, one per service, kept outside the watchdog.
+///
+/// The app owns one of these and hands the same one to every watchdog it builds.
+/// Changing the watch list, or a policy, builds a new watchdog, and without this
+/// the record of a service that is close to the cap, or has already reached it,
+/// would go with the old one.
+///
+/// Cloning gives another handle on the same counts, not a copy of them.
+#[derive(Debug, Clone, Default)]
+pub struct RetryBook(Arc<Mutex<HashMap<String, RetryState>>>);
+
+impl RetryBook {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The counts, for the engine's own use. The app only carries the book.
+    pub(crate) fn lock(&self) -> MutexGuard<'_, HashMap<String, RetryState>> {
+        match self.0.lock() {
+            Ok(counts) => counts,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
+}
+
 /// The watchdog. One thread watches each monitored service.
+#[derive(Debug)]
 pub struct Watchdog {
     shared: Arc<Shared>,
     quit: scm::StopEvent,
@@ -242,7 +273,7 @@ impl Watchdog {
             sink,
             log: Mutex::new(settings.log),
             stats: settings.stats,
-            retries: Mutex::new(HashMap::new()),
+            retries: settings.retries,
             stop_wait: settings.stop_wait,
         });
         let quit = scm::StopEvent::new()?;
@@ -306,7 +337,7 @@ impl Watchdog {
 
     /// Let Leash try a service again after the stop cap. The user asks for it.
     pub fn rearm(&self, service: &str) {
-        if let Some(retry) = lock(&self.shared.retries).get_mut(service) {
+        if let Some(retry) = self.shared.retries.lock().get_mut(service) {
             retry.rearm();
         }
     }
@@ -314,7 +345,7 @@ impl Watchdog {
     /// The services that used up their stops inside the window and are waiting
     /// for the user to try again. The UI shows a badge for these.
     pub fn gave_up(&self) -> Vec<String> {
-        let retries = lock(&self.shared.retries);
+        let retries = self.shared.retries.lock();
         let now = Instant::now();
 
         retries
@@ -406,7 +437,7 @@ fn act(name: &str, policy: Policy, shared: &Shared) -> Result<(), WatchError> {
     };
 
     let decision = {
-        let retries = lock(&shared.retries);
+        let retries = shared.retries.lock();
         let unseen = RetryState::new();
         let retry = retries.get(name).unwrap_or(&unseen);
         decide(policy, paused, elevated, &verdict, retry, now)
@@ -458,7 +489,9 @@ fn act(name: &str, policy: Policy, shared: &Shared) -> Result<(), WatchError> {
             let outcome = scm::stop(name, shared.stop_wait)?;
             // Every attempt counts, so a service that refuses to stop also
             // reaches the cap and the backoff.
-            lock(&shared.retries)
+            shared
+                .retries
+                .lock()
                 .entry(name.to_string())
                 .or_default()
                 .record_stop(now);
@@ -803,6 +836,7 @@ mod tests {
             elevated: false,
             log: ActivityLog::new(dir),
             stats,
+            retries: RetryBook::new(),
             stop_wait: Duration::from_secs(1),
         }
     }
@@ -820,15 +854,18 @@ mod tests {
             name: TEST_SERVICE.to_string(),
             policy: Policy::Stop,
         }];
-        let mut settings = settings("cap");
-        settings.elevated = true;
-        settings.stop_wait = Duration::from_secs(5);
+        // Named `first`, because a local called `settings` would hide the helper
+        // function of the same name from the rest of this test.
+        let mut first = settings("cap");
+        first.elevated = true;
+        first.stop_wait = Duration::from_secs(5);
         // Both paths are checked at the end, so they are taken before the
         // settings move into the watchdog.
-        let stats = settings.stats.clone();
-        let log_dir = settings.log.dir().to_path_buf();
+        let stats = first.stats.clone();
+        let log_dir = first.log.dir().to_path_buf();
+        let book = first.retries.clone();
 
-        let mut watchdog = Watchdog::start(settings, &services, sink).expect("start");
+        let mut watchdog = Watchdog::start(first, &services, sink).expect("start");
         start_test_service();
         show_start_timeline();
 
@@ -876,6 +913,25 @@ mod tests {
         assert_eq!(logged_catches(&log_dir), MAX_STOPS, "the logged catches");
 
         watchdog.stop();
+
+        // Anything else the app does, such as adding a service, builds a new
+        // watchdog. The counts live outside it, so this one must still know that
+        // the service gave up.
+        let (sink_again, _) = std::sync::mpsc::channel();
+        // Not called `settings`: that name is already the one built for the
+        // first watchdog, and this line would call the value instead.
+        let mut again = settings("cap-again");
+        again.elevated = true;
+        again.retries = book;
+        let mut rebuilt = Watchdog::start(again, &services, sink_again).expect("start again");
+
+        assert_eq!(
+            rebuilt.gave_up(),
+            vec![TEST_SERVICE.to_string()],
+            "a rebuild must not forgive a service that used up its stops"
+        );
+
+        rebuilt.stop();
     }
 
     /// The dummy service that `scripts/elevated-test.ps1` creates.
@@ -934,6 +990,22 @@ mod tests {
                 .count();
         }
         count
+    }
+
+    #[test]
+    fn should_share_the_counts_with_every_clone_of_the_book() {
+        let book = RetryBook::new();
+        let handed_on = book.clone();
+        let now = Instant::now();
+
+        book.lock()
+            .entry("Spooler".to_string())
+            .or_default()
+            .record_stop(now);
+
+        let counts = handed_on.lock();
+        let retry = counts.get("Spooler").expect("the count this test recorded");
+        assert_eq!(retry.stops_in_window(now), 1);
     }
 
     #[test]

@@ -182,7 +182,7 @@ repository along with their OFL licences.
 All of these pass:
 
     cargo fmt --all --check
-    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
     cargo test --workspace
     pnpm lint
     pnpm test
