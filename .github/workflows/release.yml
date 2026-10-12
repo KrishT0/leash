@@ -103,6 +103,16 @@ jobs:
       - name: Build the installer
         run: pnpm tauri build
 
+      - name: Give the installer the name people download
+        shell: pwsh
+        run: |
+          # The landing page links to releases/latest/download/Leash-setup.exe, so
+          # that link never changes between releases. The versioned copy stays in
+          # the bundle folder and is the one kept as a build artifact.
+          New-Item -ItemType Directory -Force -Path target/release/stable | Out-Null
+          Copy-Item target/release/bundle/nsis/*.exe target/release/stable/Leash-setup.exe -Force
+          Get-ChildItem target/release/stable/*.exe | Select-Object Name, Length
+
       - name: Report the file people will download
         shell: pwsh
         run: |
@@ -110,7 +120,7 @@ jobs:
           # released file, not to a local build: the installer carries its build
           # time, so two builds of one commit have different bytes.
           $onTag = ($env:GITHUB_REF_TYPE -eq "tag")
-          foreach ($file in Get-ChildItem target/release/bundle/nsis/*.exe) {
+          foreach ($file in Get-ChildItem target/release/stable/*.exe) {
             $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
             $size = [math]::Round($file.Length / 1MB, 2)
             $url = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/latest/download/$($file.Name)"
@@ -141,5 +151,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/release/bundle/nsis/*.exe
+          files: target/release/stable/Leash-setup.exe
           generate_release_notes: true

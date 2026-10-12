@@ -1,0 +1,10 @@
+<!--
+  The app mark, for a browser tab and for the preview harness. The window, the
+  taskbar and the installer take their icon from the generated files in
+  src-tauri/icons, and the tray takes its mark from icons/tray.png.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="#0B0B0D" />
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#7C5CFF" stroke-width="30" />
+  <circle cx="406" cy="256" r="52" fill="#FFFFFF" />
+</svg>
